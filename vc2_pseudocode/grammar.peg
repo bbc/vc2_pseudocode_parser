@@ -1,0 +1,76 @@
+# Grammar for the VC-2 specification pseudocode language
+start <- AWS @=(function AWS)+ EOF
+
+# Function definition
+function           <- identifier WS function_arguments WS stmt_block
+function_arguments <- "(" WS (identifier WS ("," WS identifier WS)* ","?)?  WS ")"
+
+# A series of statements
+stmt_block <- ":" WS stmt
+            / ":" EOL @>((@=stmt)+)
+
+# Statements (all end with an EOL)
+stmt <- if_else_stmt
+      / for_each_stmt
+      / for_stmt
+      / while_stmt
+      / function_call_stmt
+      / return_stmt
+      / assignment_stmt
+
+function_call_stmt <- function_call EOL
+if_else_stmt       <- @=("if" WS condition WS stmt_block)
+                      @=(@=("else" WS_ "if" WS condition WS stmt_block)*)
+                      @=(("else" WS stmt_block)?)
+for_each_stmt      <- "for" WS_ "each" WS_ identifier WS_ "in" WS_ for_each_list WS stmt_block
+for_stmt           <- "for" WS_ identifier WS "=" WS expr WS_ "to" WS_ expr WS stmt_block
+while_stmt         <- "while" WS condition WS stmt_block
+assignment_stmt    <- variable WS assignment_op WS expr EOL
+return_stmt        <- "return" WS_ expr EOL
+
+condition      <- "(" WS expr WS ")"
+for_each_list  <- expr (WS "," WS expr)*
+assignment_op  <- r"(\+|-|\*|//|&|\^|\||<<|>>)?="
+
+# Expressions (defined below in ascending order of precidence)
+expr <- maybe_eq_ne_expr
+maybe_eq_ne_expr  <- maybe_lt_gt_expr (WS r"==|!="     WS maybe_lt_gt_expr)*
+maybe_lt_gt_expr  <- maybe_or_expr    (WS r"<=|>=|<|>" WS maybe_or_expr)*
+maybe_or_expr     <- maybe_xor_expr   (WS "|"          WS maybe_xor_expr)*
+maybe_xor_expr    <- maybe_and_expr   (WS "^"          WS maybe_and_expr)*
+maybe_and_expr    <- maybe_shift_expr (WS "&"          WS maybe_shift_expr)*
+maybe_shift_expr  <- maybe_arith_expr (WS r"<<|>>"     WS maybe_arith_expr)*
+maybe_arith_expr  <- maybe_prod_expr  (WS r"\+|-"      WS maybe_prod_expr)*
+maybe_prod_expr   <- maybe_unary_expr (WS r"\*|//"     WS maybe_unary_expr)*
+maybe_unary_expr  <- r"\+|-|!" WS maybe_unary_expr / maybe_peren_expr
+maybe_peren_expr  <- "(" WS expr WS ")" / atom
+
+# Atoms
+atom <- function_call
+      / variable
+      / empty_map
+      / boolean
+      / number
+
+variable  <- identifier WS (subscript WS)*
+subscript <- "[" WS expr WS "]"
+
+function_call           <- identifier WS function_call_arguments
+function_call_arguments <- "(" WS (expr WS ("," WS expr WS)* ","?)? WS ")"
+
+# Literals
+identifier    <- !reserved_word r"[a-zA-Z_][a-zA-Z0-9_]*"
+reserved_word <- r"(if|else|elif|elseif|for|each|foreach|in|to|while|return|[Tt]rue|[Ff]alse)(?![a-zA-Z0-9_])"
+boolean       <- ("True" / "False")
+number        <- r"(0[bB][01]+)|(0[xX][0-9a-fA-F]+)|([0-9]+)"
+empty_map     <- "{" WS "}"
+
+# Whitespace and comments
+comment  <- r"#((?![\n\r]).)*([\n\r]|(?!.))+"
+WS       <- H_SPACE?
+WS_      <- H_SPACE
+AWS      <- (comment / H_SPACE / V_SPACE)*
+EOL      <- H_SPACE? (comment / V_SPACE / EOF) AWS
+H_SPACE  <- r"[ \t]+"
+V_SPACE  <- r"[\n\r]+"
+EOF      <- !.
