@@ -1432,5 +1432,5 @@ def test_parse_error_messages(string: str, exp_error: str) -> None:
     with pytest.raises(PseudocodeParseError) as exc_info:
         parse(dedent(string))
     exc = exc_info.value
-    message = "\n".join(map(str.rstrip, exc.explain().splitlines()[1:]))
+    message = "\n".join(map(str.rstrip, str(exc).splitlines()[1:]))
     assert message == dedent(exp_error[1:]).rstrip()

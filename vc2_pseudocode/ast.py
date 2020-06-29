@@ -132,6 +132,10 @@ class Subscript(ASTNode):
     def __post_init__(self) -> None:
         self.offset = self.variable.offset
 
+    @property
+    def name(self) -> str:
+        return self.variable.name
+
 
 @dataclass
 class Expr(ASTNode):
