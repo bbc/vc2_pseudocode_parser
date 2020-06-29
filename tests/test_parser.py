@@ -857,574 +857,574 @@ def test_comment_capture(string: str, exp_comments: Optional[List[Comment]]) -> 
             "",
             """
 
-            ^
-        Expected <function-definition>
-        """,
+                    ^
+                Expected <function-definition>
+            """,
         ),
         # Function missing arguments
         (
             "foo",
             """
-            foo
-               ^
-        Expected '('
-        """,
+                    foo
+                       ^
+                Expected '('
+            """,
         ),
         # Function missing open peren
         (
             "foo a",
             """
-            foo a
-                ^
-        Expected '('
-        """,
+                    foo a
+                        ^
+                Expected '('
+            """,
         ),
         # Function missing close peren
         (
             "foo(a",
             """
-            foo(a
-                 ^
-        Expected ')' or ','
-        """,
+                    foo(a
+                         ^
+                Expected ')' or ','
+            """,
         ),
         (
             "foo(a,",
             """
-            foo(a,
-                  ^
-        Expected ')' or <identifier>
-        """,
+                    foo(a,
+                          ^
+                Expected ')' or <identifier>
+            """,
         ),
         # Function missing colon
         (
             "foo(a)",
             """
-            foo(a)
-                  ^
-        Expected ':'
-        """,
+                    foo(a)
+                          ^
+                Expected ':'
+            """,
         ),
         # Function missing statement
         (
             "foo(a):",
             """
-            foo(a):
-                   ^
-        Expected <statement>
-        """,
+                    foo(a):
+                           ^
+                Expected <statement>
+            """,
         ),
         # Non-single-line statement used
         (
             "foo(a): if (True): a()",
             """
-            foo(a): if (True): a()
-                    ^
-        Expected <newline> or <single-line-statement>
-        """,
+                    foo(a): if (True): a()
+                            ^
+                Expected <newline> or <single-line-statement>
+            """,
         ),
         # Block not indented
         (
             """
-            foo(a):
-            not_indented()
-        """,
+                foo(a):
+                not_indented()
+            """,
             """
-            not_indented()
-            ^
-        Expected <statement> (with indentation > 0)
-        """,
+                    not_indented()
+                    ^
+                Expected <statement> (with indentation > 0)
+            """,
         ),
         # Block inconsistently indented
         (
             """
-            foo(a):
-                indented()
-                 badly_indented()
-        """,
+                foo(a):
+                    indented()
+                     badly_indented()
+            """,
             """
-                 badly_indented()
-                 ^
-        Expected <function-definition> (with indentation = 0) or <statement> (with indentation = 4)
-        """,
+                         badly_indented()
+                         ^
+                Expected <function-definition> (with indentation = 0) or <statement> (with indentation = 4)
+            """,  # noqa: E501
         ),
         # Bad indent before expected statement
         (
             """
-            foo(a):
-                indented()
-                 badly_indented_and_not_stmt
-        """,
+                foo(a):
+                    indented()
+                     badly_indented_and_not_stmt
+            """,
             """
-                 badly_indented_and_not_stmt
-                 ^
-        Expected <function-definition> (with indentation = 0) or <statement> (with indentation = 4)
-        """,
+                         badly_indented_and_not_stmt
+                         ^
+                Expected <function-definition> (with indentation = 0) or <statement> (with indentation = 4)
+            """,  # noqa: E501
         ),
         # If statement with no body
         (
             """
-            foo(a):
-                if (True):
-                return 0
-        """,
+                foo(a):
+                    if (True):
+                    return 0
+            """,
             """
-                return 0
-                ^
-        Expected <statement> (with indentation > 4)
-        """,
+                        return 0
+                        ^
+                Expected <statement> (with indentation > 4)
+            """,
         ),
         # If with no peren
         (
             """
-            foo(a):
-                if True:
-                    return 0
-        """,
+                foo(a):
+                    if True:
+                        return 0
+            """,
             """
-                if True:
-                   ^
-        Expected '('
-        """,
+                        if True:
+                           ^
+                Expected '('
+            """,
         ),
         # If with no close peren
         (
             """
-            foo(a):
-                if (True:
-                    return 0
-        """,
+                foo(a):
+                    if (True:
+                        return 0
+            """,
             """
-                if (True:
-                        ^
-        Expected ')' or <operator>
-        """,
+                        if (True:
+                                ^
+                Expected ')' or <operator>
+            """,
         ),
         # If with no close peren (and lots of potential expression parses)
         (
             """
-            foo(a):
-                if (a:
-                    return 0
-        """,
+                foo(a):
+                    if (a:
+                        return 0
+            """,
             """
-                if (a:
-                     ^
-        Expected '(' or ')' or '[' or <operator>
-        """,
+                        if (a:
+                             ^
+                Expected '(' or ')' or '[' or <operator>
+            """,
         ),
         # If with no colon
         (
             """
-            foo(a):
-                if (a)
-                    return 0
-        """,
+                foo(a):
+                    if (a)
+                        return 0
+            """,
             """
-                if (a)
-                      ^
-        Expected ':'
-        """,
+                        if (a)
+                              ^
+                Expected ':'
+            """,
         ),
         # If with no condition
         (
             """
-            foo(a):
-                if
-                    return 0
-        """,
+                foo(a):
+                    if
+                        return 0
+            """,
             """
-                if
-                  ^
-        Expected '('
-        """,
+                        if
+                          ^
+                Expected '('
+            """,
         ),
         # Else if with no space
         (
             """
-            foo(a):
-                if (True):
-                    return 0
-                elseif (True):
-                    return 1
-        """,
+                foo(a):
+                    if (True):
+                        return 0
+                    elseif (True):
+                        return 1
+            """,
             """
-                elseif (True):
-                    ^
-        Expected ':'
-        """,
+                        elseif (True):
+                            ^
+                Expected ':'
+            """,
         ),
         # Else if with no condition
         (
             """
-            foo(a):
-                if (True):
-                    return 0
-                else if:
-                    return 1
-        """,
+                foo(a):
+                    if (True):
+                        return 0
+                    else if:
+                        return 1
+            """,
             """
-                else if:
-                       ^
-        Expected '('
-        """,
+                        else if:
+                               ^
+                Expected '('
+            """,
         ),
         # Else with condition
         (
             """
-            foo(a):
-                if (True):
-                    return 0
-                else (True):
-                    return 1
-        """,
+                foo(a):
+                    if (True):
+                        return 0
+                    else (True):
+                        return 1
+            """,
             """
-                else (True):
-                     ^
-        Expected ':' or 'if'
-        """,
+                        else (True):
+                             ^
+                Expected ':' or 'if'
+            """,
         ),
         # Else before else-if
         (
             """
-            foo(a):
-                if (True):
-                    return 0
-                else:
-                    return 1
-                else if (True):
-                    return 2
-        """,
+                foo(a):
+                    if (True):
+                        return 0
+                    else:
+                        return 1
+                    else if (True):
+                        return 2
+            """,
             """
-                else if (True):
-                ^
-        Expected <function-definition> (with indentation = 0) or <statement> (optionally with indentation = 8)
-        """,  # noqa: E501
+                        else if (True):
+                        ^
+                Expected <function-definition> (with indentation = 0) or <statement> (optionally with indentation = 8)
+            """,  # noqa: E501
         ),
         # For-each without space
         (
             """
-            foo(a):
-                foreach x in a, b, c:
-                    return x
-        """,
+                foo(a):
+                    foreach x in a, b, c:
+                        return x
+            """,
             """
-                foreach x in a, b, c:
-                   ^
-        Expected <space>
-        """,
+                        foreach x in a, b, c:
+                           ^
+                Expected <space>
+            """,
         ),
         # For-each without name
         (
             """
-            foo(a):
-                for each in a, b, c:
-                    return x
-        """,
+                foo(a):
+                    for each in a, b, c:
+                        return x
+            """,
             """
-                for each in a, b, c:
-                         ^
-        Expected <identifier>
-        """,
+                        for each in a, b, c:
+                                 ^
+                Expected <identifier>
+            """,
         ),
         # For-each without values
         (
             """
-            foo(a):
-                for each x in :
-                    return x
-        """,
+                foo(a):
+                    for each x in :
+                        return x
+            """,
             """
-                for each x in :
-                              ^
-        Expected <expression>
-        """,
+                        for each x in :
+                                      ^
+                Expected <expression>
+            """,
         ),
         # For-each with trailing comma
         (
             """
-            foo(a):
-                for each x in a, b,:
-                    return x
-        """,
+                foo(a):
+                    for each x in a, b,:
+                        return x
+            """,
             """
-                for each x in a, b,:
-                                   ^
-        Expected <expression>
-        """,
+                        for each x in a, b,:
+                                           ^
+                Expected <expression>
+            """,
         ),
         # For with missing identifier
         (
             """
-            foo(a):
-                for = 1 to 3:
-                    return 0
-        """,
+                foo(a):
+                    for = 1 to 3:
+                        return 0
+            """,
             """
-                for = 1 to 3:
-                    ^
-        Expected 'each' or <identifier>
-        """,
+                        for = 1 to 3:
+                            ^
+                Expected 'each' or <identifier>
+            """,
         ),
         # For with invalid identifier
         (
             """
-            foo(a):
-                for 100 = 1 to 3:
-                    return 0
-        """,
+                foo(a):
+                    for 100 = 1 to 3:
+                        return 0
+            """,
             """
-                for 100 = 1 to 3:
-                    ^
-        Expected 'each' or <identifier>
-        """,
+                        for 100 = 1 to 3:
+                            ^
+                Expected 'each' or <identifier>
+            """,
         ),
         (
             """
-            foo(a):
-                for a[1] = 1 to 3:
-                    return a
-        """,
+                foo(a):
+                    for a[1] = 1 to 3:
+                        return a
+            """,
             """
-                for a[1] = 1 to 3:
-                     ^
-        Expected '='
-        """,
+                        for a[1] = 1 to 3:
+                             ^
+                Expected '='
+            """,
         ),
         # For with 'in' not =
         (
             """
-            foo(a):
-                for a in 1 to 3:
-                    return a
-        """,
+                foo(a):
+                    for a in 1 to 3:
+                        return a
+            """,
             """
-                for a in 1 to 3:
-                      ^
-        Expected '='
-        """,
+                        for a in 1 to 3:
+                              ^
+                Expected '='
+            """,
         ),
         # For with missing start
         (
             """
-            foo(a):
-                for a = to 3:
-                    return a
-        """,
+                foo(a):
+                    for a = to 3:
+                        return a
+            """,
             """
-                for a = to 3:
-                        ^
-        Expected <expression>
-        """,
+                        for a = to 3:
+                                ^
+                Expected <expression>
+            """,
         ),
         # For with missing end
         (
             """
-            foo(a):
-                for a = 1 to :
-                    return a
-        """,
+                foo(a):
+                    for a = 1 to :
+                        return a
+            """,
             """
-                for a = 1 to :
-                             ^
-        Expected <expression>
-        """,
+                        for a = 1 to :
+                                     ^
+                Expected <expression>
+            """,
         ),
         # For with missing spaces
         (
             """
-            foo(a):
-                for a=1to3:
-                    return a
-        """,
+                foo(a):
+                    for a=1to3:
+                        return a
+            """,
             """
-                for a=1to3:
-                       ^
-        Expected <operator>
-        """,
+                        for a=1to3:
+                               ^
+                Expected <operator>
+            """,
         ),
         (
             """
-            foo(a):
-                for a=1 to3:
-                    return a
-        """,
+                foo(a):
+                    for a=1 to3:
+                        return a
+            """,
             """
-                for a=1 to3:
-                          ^
-        Expected <space>
-        """,
+                        for a=1 to3:
+                                  ^
+                Expected <space>
+            """,
         ),
         # While with missing brackets
         (
             """
-            foo(a):
-                while True:
-                    return 0
-        """,
+                foo(a):
+                    while True:
+                        return 0
+            """,
             """
-                while True:
-                      ^
-        Expected '('
-        """,
+                        while True:
+                              ^
+                Expected '('
+            """,
         ),
         # While with missing close brackets
         (
             """
-            foo(a):
-                while (True:
-                    return 0
-        """,
+                foo(a):
+                    while (True:
+                        return 0
+            """,
             """
-                while (True:
-                           ^
-        Expected ')' or <operator>
-        """,
+                        while (True:
+                                   ^
+                Expected ')' or <operator>
+            """,
         ),
         # While with empty expression
         (
             """
-            foo(a):
-                while ():
-                    return 0
-        """,
+                foo(a):
+                    while ():
+                        return 0
+            """,
             """
-                while ():
-                       ^
-        Expected <expression>
-        """,
+                        while ():
+                               ^
+                Expected <expression>
+            """,
         ),
         # Return with no expression
         (
             """
-            foo(a):
-                return # Nothing!
-        """,
+                foo(a):
+                    return # Nothing!
+            """,
             """
-                return # Nothing!
-                       ^
-        Expected <expression>
-        """,
+                        return # Nothing!
+                               ^
+                Expected <expression>
+            """,
         ),
         # Return with non expression
         (
             """
-            foo(a):
-                return return 1
-        """,
+                foo(a):
+                    return return 1
+            """,
             """
-                return return 1
-                       ^
-        Expected <expression>
-        """,
+                        return return 1
+                               ^
+                Expected <expression>
+            """,
         ),
         # Assigning to non-variable
         (
             """
-            foo(a):
-                a() = 123
-        """,
+                foo(a):
+                    a() = 123
+            """,
             """
-                a() = 123
-                    ^
-        Expected <newline>
-        """,
+                        a() = 123
+                            ^
+                Expected <newline>
+            """,
         ),
         # Assigning a non expression
         (
             """
-            foo(a):
-                a = return 1
-        """,
+                foo(a):
+                    a = return 1
+            """,
             """
-                a = return 1
-                    ^
-        Expected <expression>
-        """,
+                        a = return 1
+                            ^
+                Expected <expression>
+            """,
         ),
         # Unmatched brackets in expression
         (
             """
-            foo(a):
-                return (1 + (2 + 3)
-        """,
+                foo(a):
+                    return (1 + (2 + 3)
+            """,
             """
-                return (1 + (2 + 3)
-                                   ^
-        Expected ')' or <operator>
-        """,
+                        return (1 + (2 + 3)
+                                           ^
+                Expected ')' or <operator>
+            """,
         ),
         # Missing half of empty map
         (
             """
-            foo(a):
-                return {
-        """,
+                foo(a):
+                    return {
+            """,
             """
-                return {
-                        ^
-        Expected '}'
-        """,
+                        return {
+                                ^
+                Expected '}'
+            """,
         ),
         # Malformed decimal
         (
             """
-            foo(a):
-                return 123f
-        """,
+                foo(a):
+                    return 123f
+            """,
             """
-                return 123f
-                          ^
-        Expected <operator>
-        """,
+                        return 123f
+                                  ^
+                Expected <operator>
+            """,
         ),
         # Malformed hex
         (
             """
-            foo(a):
-                return 0x123fg
-        """,
+                foo(a):
+                    return 0x123fg
+            """,
             """
-                return 0x123fg
-                             ^
-        Expected <operator>
-        """,
+                        return 0x123fg
+                                     ^
+                Expected <operator>
+            """,
         ),
         # Malformed bin
         (
             """
-            foo(a):
-                return 0b102
-        """,
+                foo(a):
+                    return 0b102
+            """,
             """
-                return 0b102
-                           ^
-        Expected <operator>
-        """,
+                        return 0b102
+                                   ^
+                Expected <operator>
+            """,
         ),
         # Number prefix on own...
         (
             """
-            foo(a):
-                return 0x
-        """,
+                foo(a):
+                    return 0x
+            """,
             """
-                return 0x
-                        ^
-        Expected <operator>
-        """,
+                        return 0x
+                                ^
+                Expected <operator>
+            """,
         ),
         # Reserved words
         (
             """
-            foo(a):
-                return if
-        """,
+                foo(a):
+                    return if
+            """,
             """
-                return if
-                       ^
-        Expected <expression>
-        """,
+                        return if
+                               ^
+                Expected <expression>
+            """,
         ),
     ],
 )
