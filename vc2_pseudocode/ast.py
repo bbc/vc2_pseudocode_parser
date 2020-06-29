@@ -2,7 +2,7 @@
 Abstract Syntax Tree (AST) data structures for the VC-2 specification pseudocode language.
 """
 
-from typing import List, Union, Optional, Any, cast
+from typing import List, Union, Optional, Any, cast, Tuple
 
 from peggie.transformer import ParseTreeTransformer
 
@@ -16,21 +16,31 @@ from dataclasses import dataclass, field
 @dataclass
 class ASTNode:
     offset: int
-    """Character offset into the source. Optional."""
+    offset_end: int
+    """Character offset (start=inclusive, end=exclusive) into the source."""
 
 
 @dataclass
 class Listing(ASTNode):
-    offset: int = field(default=0, init=False, repr=False)
+    offset: int = field(init=False, repr=False)
+    offset_end: int = field(init=False, repr=False)
     functions: List["Function"]
     comments: List["Comment"]
+
+    def __post_init__(self) -> None:
+        self.offset = self.functions[0].offset
+        self.offset_end = self.functions[-1].offset_end
 
 
 @dataclass
 class Function(ASTNode):
+    offset_end: int = field(init=False, repr=False)
     name: str
     arguments: List["Variable"]
     body: List["Stmt"]
+
+    def __post_init__(self) -> None:
+        self.offset_end = self.body[-1].offset_end
 
 
 @dataclass
@@ -41,57 +51,88 @@ class Stmt(ASTNode):
 @dataclass
 class IfElseStmt(Stmt):
     offset: int = field(init=False, repr=False)
+    offset_end: int = field(init=False, repr=False)
     if_branches: List["IfBranch"]
     else_branch: Optional["ElseBranch"] = None
 
     def __post_init__(self) -> None:
         self.offset = self.if_branches[0].offset
+        if self.else_branch is not None:
+            self.offset_end = self.else_branch.offset_end
+        else:
+            self.offset_end = self.if_branches[-1].offset_end
 
 
 @dataclass
 class IfBranch(ASTNode):
+    offset_end: int = field(init=False, repr=False)
     condition: "Expr"
     body: List[Stmt]
+
+    def __post_init__(self) -> None:
+        self.offset_end = self.body[-1].offset_end
 
 
 @dataclass
 class ElseBranch(ASTNode):
+    offset_end: int = field(init=False, repr=False)
     body: List[Stmt]
+
+    def __post_init__(self) -> None:
+        self.offset_end = self.body[-1].offset_end
 
 
 @dataclass
 class ForEachStmt(Stmt):
+    offset_end: int = field(init=False, repr=False)
     variable: "Variable"
     values: List["Expr"]
     body: List[Stmt]
 
+    def __post_init__(self) -> None:
+        self.offset_end = self.body[-1].offset_end
+
 
 @dataclass
 class ForStmt(Stmt):
+    offset_end: int = field(init=False, repr=False)
     variable: "Variable"
     start: "Expr"
     end: "Expr"
     body: List[Stmt]
 
+    def __post_init__(self) -> None:
+        self.offset_end = self.body[-1].offset_end
+
 
 @dataclass
 class WhileStmt(Stmt):
+    offset_end: int = field(init=False, repr=False)
     condition: "Expr"
     body: List[Stmt]
+
+    def __post_init__(self) -> None:
+        self.offset_end = self.body[-1].offset_end
 
 
 @dataclass
 class FunctionCallStmt(Stmt):
     offset: int = field(init=False, repr=False)
+    offset_end: int = field(init=False, repr=False)
     call: "FunctionCallExpr"
 
     def __post_init__(self) -> None:
         self.offset = self.call.offset
+        self.offset_end = self.call.offset_end
 
 
 @dataclass
 class ReturnStmt(Stmt):
+    offset_end: int = field(init=False, repr=False)
     value: "Expr"
+
+    def __post_init__(self) -> None:
+        self.offset_end = self.value.offset_end
 
 
 class AssignmentOp(Enum):
@@ -110,17 +151,23 @@ class AssignmentOp(Enum):
 @dataclass
 class AssignmentStmt(Stmt):
     offset: int = field(init=False, repr=False)
+    offset_end: int = field(init=False, repr=False)
     variable: Union["Variable", "Subscript"]
     op: AssignmentOp
     value: "Expr"
 
     def __post_init__(self) -> None:
         self.offset = self.variable.offset
+        self.offset_end = self.value.offset_end
 
 
 @dataclass
 class Variable(ASTNode):
+    offset_end: int = field(init=False, repr=False)
     name: str
+
+    def __post_init__(self) -> None:
+        self.offset_end = self.offset + len(self.name)
 
 
 @dataclass
@@ -142,6 +189,11 @@ class Expr(ASTNode):
     pass
 
 
+@dataclass
+class PerenExpr(Expr):
+    value: Expr
+
+
 class UnaryOp(Enum):
     plus = "+"
     minus = "-"
@@ -150,8 +202,12 @@ class UnaryOp(Enum):
 
 @dataclass
 class UnaryExpr(Expr):
+    offset_end: int = field(init=False, repr=False)
     op: UnaryOp
     value: Expr
+
+    def __post_init__(self) -> None:
+        self.offset_end = self.value.offset_end
 
 
 class BinaryOp(Enum):
@@ -175,12 +231,14 @@ class BinaryOp(Enum):
 @dataclass
 class BinaryExpr(Expr):
     offset: int = field(init=False, repr=False)
+    offset_end: int = field(init=False, repr=False)
     lhs: Expr
     op: BinaryOp
     rhs: Expr
 
     def __post_init__(self) -> None:
         self.offset = self.lhs.offset
+        self.offset_end = self.rhs.offset_end
 
 
 @dataclass
@@ -192,10 +250,12 @@ class FunctionCallExpr(Expr):
 @dataclass
 class VariableExpr(Expr):
     offset: int = field(init=False, repr=False)
+    offset_end: int = field(init=False, repr=False)
     variable: Union[Variable, Subscript]
 
     def __post_init__(self) -> None:
         self.offset = self.variable.offset
+        self.offset_end = self.variable.offset_end
 
 
 @dataclass
@@ -205,7 +265,11 @@ class EmptyMapExpr(Expr):
 
 @dataclass
 class BooleanExpr(Expr):
+    offset_end: int = field(init=False, repr=False)
     value: bool
+
+    def __post_init__(self) -> None:
+        self.offset_end = self.offset + (4 if self.value else 5)
 
 
 @dataclass
@@ -216,7 +280,11 @@ class NumberExpr(Expr):
 
 @dataclass
 class Comment(ASTNode):
+    offset_end: int = field(init=False, repr=False)
     string: str
+
+    def __post_init__(self) -> None:
+        self.offset_end = self.offset + len(self.string)
 
 
 class ToAST(ParseTreeTransformer):
@@ -406,8 +474,8 @@ class ToAST(ParseTreeTransformer):
 
     def maybe_peren_expr(self, parse_tree: Alt, children: Any) -> Expr:
         if parse_tree.choice_index == 0:  # Perentheses
-            _open, _ws1, expr, _ws2, _close = children
-            return cast(Expr, expr)
+            open_, _ws1, expr, _ws2, close_ = children
+            return PerenExpr(open_.start, close_.end, cast(Expr, expr))
         elif parse_tree.choice_index == 1:  # Pass-through
             return cast(Expr, children)
         else:
@@ -422,19 +490,25 @@ class ToAST(ParseTreeTransformer):
             raise TypeError(parse_tree.choice_index)  # Unreachable
 
     def function_call(self, _pt: ParseTree, children: Any) -> FunctionCallExpr:
-        identifier, _ws, arguments = children
+        identifier, _ws, (arguments, offset_end) = children
         return FunctionCallExpr(
-            identifier.start, cast(str, identifier.string), cast(List[Expr], arguments),
+            identifier.start,
+            cast(int, offset_end),
+            cast(str, identifier.string),
+            cast(List[Expr], arguments),
         )
 
-    def function_call_arguments(self, _pt: ParseTree, children: Any) -> List[Expr]:
-        _open, _ws1, maybe_args, _ws2, _close = children
+    def function_call_arguments(
+        self, _pt: ParseTree, children: Any
+    ) -> Tuple[List[Expr], int]:
+        _open, _ws1, maybe_args, _ws2, close_ = children
+        offset_end = close_.end
         if maybe_args is None:
-            return []
+            return ([], offset_end)
         else:
             first, _ws, rest, _comma = maybe_args
             arguments = [first] + [expr for _comma, _ws, expr, _ws in rest]
-            return cast(List[Expr], arguments)
+            return (cast(List[Expr], arguments), offset_end)
 
     def variable(self, _pt: ParseTree, children: Any) -> Union[Variable, Subscript]:
         identifier, _ws1, subscripts_and_ws = children
@@ -442,31 +516,34 @@ class ToAST(ParseTreeTransformer):
         variable: Union[Variable, Subscript] = Variable(
             identifier.start, identifier.string,
         )
-        for expr, _ws in subscripts_and_ws:
-            variable = Subscript(variable, cast(Expr, expr))
+        offset_end = identifier.end
+        for (expr, offset_end), _ws in subscripts_and_ws:
+            variable = Subscript(offset_end, variable, cast(Expr, expr))
 
         return variable
 
-    def subscript(self, _pt: ParseTree, children: Any) -> Expr:
-        open_, _ws1, expr, _ws2, _close = children
-        return cast(Expr, expr)
+    def subscript(self, _pt: ParseTree, children: Any) -> Tuple[Expr, int]:
+        open_, _ws1, expr, _ws2, close_ = children
+        offset_end = close_.end
+        return (cast(Expr, expr), offset_end)
 
     def empty_map(self, _pt: ParseTree, children: Any) -> EmptyMapExpr:
-        open_, _ws, _close = children
-        return EmptyMapExpr(open_.start)
+        open_, _ws, close_ = children
+        return EmptyMapExpr(open_.start, close_.end)
 
     def boolean(self, _pt: ParseTree, value: Regex) -> BooleanExpr:
         return BooleanExpr(value.start, value.string == "True")
 
     def number(self, _pt: ParseTree, number: Regex) -> NumberExpr:
         offset = number.start
+        offset_end = number.end
         string = number.string
         if string.startswith("0b") or string.startswith("0B"):
-            return NumberExpr(offset, int(string, 2), 2)
+            return NumberExpr(offset, offset_end, int(string, 2), 2)
         elif string.startswith("0x") or string.startswith("0X"):
-            return NumberExpr(offset, int(string, 16), 16)
+            return NumberExpr(offset, offset_end, int(string, 16), 16)
         else:
-            return NumberExpr(offset, int(string), 10)
+            return NumberExpr(offset, offset_end, int(string), 10)
 
     def identifier(self, _pt: ParseTree, children: Any) -> str:
         _la, identifier = children

@@ -34,6 +34,7 @@ from vc2_pseudocode.ast import (
     AssignmentStmt,
     AssignmentOp,
     ReturnStmt,
+    PerenExpr,
     UnaryOp,
     UnaryExpr,
     BinaryOp,
@@ -74,7 +75,6 @@ from vc2_pseudocode.ast import (
 def test_listing(string: str, exp_function_offsets: List[int]) -> None:
     if exp_function_offsets:
         ast = parse(string)
-        assert ast.offset == 0
         assert [f.offset for f in ast.functions] == exp_function_offsets
     else:
         with pytest.raises(PseudocodeParseError):
@@ -130,7 +130,11 @@ def test_function(
 def equal_ignoring_offsets(a: Any, b: Any) -> bool:
     def remove_offset(x: Any) -> Any:
         if isinstance(x, dict):
-            return {k: remove_offset(v) for k, v in x.items() if k != "offset"}
+            return {
+                k: remove_offset(v)
+                for k, v in x.items()
+                if k != "offset" and k != "offset_end"
+            }
         elif isinstance(x, list):
             return [remove_offset(v) for v in x]
         elif isinstance(x, tuple):
@@ -165,7 +169,7 @@ def test_equal_ignoring_offsets(a: ASTNode, b: ASTNode, exp_equal: bool) -> None
 
 
 def fcs(name: str) -> FunctionCallStmt:
-    return FunctionCallStmt(FunctionCallExpr(0, name, []))
+    return FunctionCallStmt(FunctionCallExpr(0, 0, name, []))
 
 
 @pytest.mark.parametrize(
@@ -441,7 +445,7 @@ def test_return_stmt(string: str, exp_stmt: Optional[ReturnStmt]) -> None:
     "lhs_string, exp_lhs",
     [
         ("x", Variable(0, "x")),
-        ("x[y]", Subscript(Variable(0, "x"), VariableExpr(Variable(0, "y")))),
+        ("x[y]", Subscript(0, Variable(0, "x"), VariableExpr(Variable(0, "y")))),
     ],
 )
 @pytest.mark.parametrize("spacing", ["", " "])
@@ -594,10 +598,14 @@ def test_binary_operator_precedence(target_op: str) -> None:
         assert equal_ignoring_offsets(
             expr,
             BinaryExpr(
-                BinaryExpr(
-                    VariableExpr(Variable(0, "a")),
-                    BinaryOp(other_op),
-                    VariableExpr(Variable(0, "b")),
+                PerenExpr(
+                    0,
+                    0,
+                    BinaryExpr(
+                        VariableExpr(Variable(0, "a")),
+                        BinaryOp(other_op),
+                        VariableExpr(Variable(0, "b")),
+                    ),
                 ),
                 BinaryOp(target_op),
                 VariableExpr(Variable(0, "c")),
@@ -609,10 +617,14 @@ def test_binary_operator_precedence(target_op: str) -> None:
             BinaryExpr(
                 VariableExpr(Variable(0, "a")),
                 BinaryOp(target_op),
-                BinaryExpr(
-                    VariableExpr(Variable(0, "b")),
-                    BinaryOp(other_op),
-                    VariableExpr(Variable(0, "c")),
+                PerenExpr(
+                    0,
+                    0,
+                    BinaryExpr(
+                        VariableExpr(Variable(0, "b")),
+                        BinaryOp(other_op),
+                        VariableExpr(Variable(0, "c")),
+                    ),
                 ),
             ),
         )
@@ -665,7 +677,7 @@ def test_function_call_expr(
     if exp_name is not None and exp_arguments is not None:
         expr = parse_expr(string)
         assert equal_ignoring_offsets(
-            expr, FunctionCallExpr(0, exp_name, exp_arguments)
+            expr, FunctionCallExpr(0, 0, exp_name, exp_arguments)
         )
     else:
         with pytest.raises(PseudocodeParseError):
@@ -680,18 +692,20 @@ def test_function_call_expr(
         # Subscripted
         (
             "foo[True]",
-            VariableExpr(Subscript(Variable(0, "foo"), BooleanExpr(0, True))),
+            VariableExpr(Subscript(0, Variable(0, "foo"), BooleanExpr(0, True))),
         ),
         # Nested subscripts
         (
             "foo[1][2][3]",
             VariableExpr(
                 Subscript(
+                    0,
                     Subscript(
-                        Subscript(Variable(0, "foo"), NumberExpr(0, 1),),
-                        NumberExpr(0, 2),
+                        0,
+                        Subscript(0, Variable(0, "foo"), NumberExpr(0, 0, 1),),
+                        NumberExpr(0, 0, 2),
                     ),
-                    NumberExpr(0, 3),
+                    NumberExpr(0, 0, 3),
                 ),
             ),
         ),
@@ -732,7 +746,7 @@ def test_variable_expr(string: str, exp_variable_expr: Optional[VariableExpr]) -
 def test_empty_map_expr(string: str, exp_success: bool) -> None:
     if exp_success:
         expr = parse_expr(string)
-        assert expr == EmptyMapExpr(14)
+        assert expr == EmptyMapExpr(14, 14 + len(string))
     else:
         with pytest.raises(PseudocodeParseError):
             parse_expr(string)
@@ -803,7 +817,7 @@ def test_number_expr(
 ) -> None:
     if exp_value is not None and exp_display_base is not None:
         expr = parse_expr(string)
-        assert expr == NumberExpr(14, exp_value, exp_display_base)
+        assert expr == NumberExpr(14, 14 + len(string), exp_value, exp_display_base)
     else:
         with pytest.raises(PseudocodeParseError):
             parse_expr(string)
