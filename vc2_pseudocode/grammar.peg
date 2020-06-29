@@ -6,7 +6,7 @@ function           <- identifier WS function_arguments WS stmt_block
 function_arguments <- "(" WS (identifier WS ("," WS identifier WS)* ","?)?  WS ")"
 
 # A series of statements
-stmt_block <- ":" WS stmt
+stmt_block <- ":" WS single_line_stmt
             / ":" EOL @>((@=stmt)+)
 
 # Statements (all end with an EOL)
@@ -17,6 +17,10 @@ stmt <- if_else_stmt
       / function_call_stmt
       / return_stmt
       / assignment_stmt
+
+single_line_stmt <- function_call_stmt
+                  / return_stmt
+                  / assignment_stmt
 
 function_call_stmt <- function_call EOL
 if_else_stmt       <- @=("if" WS condition WS stmt_block)

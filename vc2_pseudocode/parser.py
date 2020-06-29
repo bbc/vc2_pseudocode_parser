@@ -21,6 +21,7 @@ parse_error_default_expr_explanations: Mapping[
     RuleExpr("function"): "<function-definition>",
     RuleExpr("expr"): "<expression>",
     RuleExpr("stmt"): "<statement>",
+    RuleExpr("single_line_stmt"): "<single-line-statement>",
     RuleExpr("identifier"): "<identifier>",
     # Optional whitespace
     RuleExpr("WS"): None,
@@ -59,6 +60,7 @@ parse_error_default_expr_explanations: Mapping[
     RegexExpr(re.compile(r"\{", re.DOTALL)): "'{'",
 }
 parse_error_default_last_resort_exprs: Set[Union[RuleExpr, RegexExpr]] = {
+    RuleExpr("single_line_stmt"),
     RuleExpr("comment"),
     RuleExpr("WS_"),
     RuleExpr("H_SPACE"),

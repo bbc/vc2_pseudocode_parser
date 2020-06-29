@@ -914,6 +914,15 @@ def test_comment_capture(string: str, exp_comments: Optional[List[Comment]]) -> 
         Expected <statement>
         """,
         ),
+        # Non-single-line statement used
+        (
+            "foo(a): if (True): a()",
+            """
+            foo(a): if (True): a()
+                    ^
+        Expected <newline> or <single-line-statement>
+        """,
+        ),
         # Block not indented
         (
             """
