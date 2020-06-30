@@ -226,6 +226,7 @@ class BinaryOp(Enum):
     sub = "-"
     mul = "*"
     idiv = "//"
+    mod = "%"
 
 
 @dataclass

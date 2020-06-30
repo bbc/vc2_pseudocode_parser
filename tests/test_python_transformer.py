@@ -939,6 +939,9 @@ class PythonToBracketed(ast.NodeTransformer):
     def visit_FloorDiv(self, node: _ast.FloorDiv) -> str:
         return "//"
 
+    def visit_Mod(self, node: _ast.Mod) -> str:
+        return "%"
+
     def visit_Pow(self, node: _ast.Pow) -> str:
         return "**"
 

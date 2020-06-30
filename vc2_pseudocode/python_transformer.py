@@ -119,7 +119,7 @@ PYTHON_BINARY_OPERATOR_PRECEDENCE: Mapping[BinaryOp, int] = {
     for precedence, ops in enumerate(
         reversed(
             [
-                ["*", "//"],
+                ["*", "//", "%"],
                 ["+", "-"],
                 ["<<", ">>"],
                 ["&"],
@@ -509,12 +509,12 @@ class PythonTransformer:
             # operators and so perentheses must be added here.
             #
             # We also add brackets for exponentiation (pow/**), even though **
-            # has higher precidence than the unary operators and therefore this
+            # has higher precedence than the unary operators and therefore this
             # isn't required. This is a standard Python convention which aids
             # readability.
             return f"{op}({value})"
         else:
-            # All non-binary expressions have higher operator precidence in
+            # All non-binary expressions have higher operator precedence in
             # Python than unary expressions (e.g. function application or
             # subscripting)
             return f"{op}{value}"
@@ -531,7 +531,7 @@ class PythonTransformer:
         # operators) and so don't require the addition of perentheses.
         #
         # Python's binary operators are left-associative so when LHS tree has
-        # same operator precidence, no brackets are required to achieve same
+        # same operator precedence, no brackets are required to achieve same
         # grouping.
         if isinstance(expr.lhs, BinaryExpr) and (
             PYTHON_BINARY_OPERATOR_PRECEDENCE[expr.lhs.op]
@@ -542,7 +542,7 @@ class PythonTransformer:
         # Decide perentheses for RHS
         #
         # Python's binary operators are left-associative so when RHS tree has
-        # same operator precidence, brackets *are* required to achieve same
+        # same operator precedence, brackets *are* required to achieve same
         # grouping.
         if isinstance(expr.rhs, BinaryExpr) and (
             PYTHON_BINARY_OPERATOR_PRECEDENCE[expr.rhs.op]
