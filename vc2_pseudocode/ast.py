@@ -25,7 +25,7 @@ class Listing(ASTNode):
     offset: int = field(init=False, repr=False)
     offset_end: int = field(init=False, repr=False)
     functions: List["Function"]
-    comments: List["Comment"]
+    comments: List["Comment"] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         self.offset = self.functions[0].offset
@@ -198,6 +198,7 @@ class UnaryOp(Enum):
     plus = "+"
     minus = "-"
     bitwise_not = "!"
+    logical_not = "not"
 
 
 @dataclass
@@ -211,15 +212,17 @@ class UnaryExpr(Expr):
 
 
 class BinaryOp(Enum):
+    logical_or = "or"
+    logical_and = "and"
     eq = "=="
     ne = "!="
     lt = "<"
     le = "<="
     gt = ">"
     ge = ">="
-    or_ = "|"
-    xor = "^"
-    and_ = "&"
+    bitwise_or_ = "|"
+    bitwise_xor = "^"
+    bitwise_and_ = "&"
     lsh = "<<"
     rsh = ">>"
     add = "+"
@@ -458,14 +461,17 @@ class ToAST(ParseTreeTransformer):
         else:
             raise TypeError(parse_tree.choice_index)  # Unreachable
 
+    maybe_log_not_expr = maybe_unary_expr
+
     def binary_expr(self, _pt: ParseTree, children: Any) -> Expr:
         lhs, rhss = children
         for _ws1, op, _ws2, rhs in rhss:
             lhs = BinaryExpr(cast(Expr, lhs), BinaryOp(op.string), cast(Expr, rhs))
         return cast(Expr, lhs)
 
-    maybe_eq_ne_expr = binary_expr
-    maybe_lt_gt_expr = binary_expr
+    maybe_log_or_expr = binary_expr
+    maybe_log_and_expr = binary_expr
+    maybe_cmp_expr = binary_expr
     maybe_or_expr = binary_expr
     maybe_xor_expr = binary_expr
     maybe_and_expr = binary_expr
@@ -512,13 +518,13 @@ class ToAST(ParseTreeTransformer):
             return (cast(List[Expr], arguments), offset_end)
 
     def variable(self, _pt: ParseTree, children: Any) -> Union[Variable, Subscript]:
-        identifier, _ws1, subscripts_and_ws = children
+        identifier, ws_and_subscripts = children
 
         variable: Union[Variable, Subscript] = Variable(
             identifier.start, identifier.string,
         )
         offset_end = identifier.end
-        for (expr, offset_end), _ws in subscripts_and_ws:
+        for _ws, (expr, offset_end) in ws_and_subscripts:
             variable = Subscript(offset_end, variable, cast(Expr, expr))
 
         return variable

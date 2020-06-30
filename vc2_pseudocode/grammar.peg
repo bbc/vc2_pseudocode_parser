@@ -37,17 +37,19 @@ for_each_list  <- expr (WS "," WS expr)*
 assignment_op  <- r"(\+|-|\*|//|&|\^|\||<<|>>)?="
 
 # Expressions (defined below in ascending order of precidence)
-expr <- maybe_eq_ne_expr
-maybe_eq_ne_expr  <- maybe_lt_gt_expr (WS r"==|!="     WS maybe_lt_gt_expr)*
-maybe_lt_gt_expr  <- maybe_or_expr    (WS r"<=|>=|<|>" WS maybe_or_expr)*
-maybe_or_expr     <- maybe_xor_expr   (WS "|"          WS maybe_xor_expr)*
-maybe_xor_expr    <- maybe_and_expr   (WS "^"          WS maybe_and_expr)*
-maybe_and_expr    <- maybe_shift_expr (WS "&"          WS maybe_shift_expr)*
-maybe_shift_expr  <- maybe_arith_expr (WS r"<<|>>"     WS maybe_arith_expr)*
-maybe_arith_expr  <- maybe_prod_expr  (WS r"\+|-"      WS maybe_prod_expr)*
-maybe_prod_expr   <- maybe_unary_expr (WS r"\*|//|%"   WS maybe_unary_expr)*
-maybe_unary_expr  <- r"\+|-|!" WS maybe_unary_expr / maybe_peren_expr
-maybe_peren_expr  <- "(" WS expr WS ")" / atom
+expr <- maybe_log_or_expr
+maybe_log_or_expr  <- maybe_log_and_expr (WS_ "or"              WS_ maybe_log_and_expr)*
+maybe_log_and_expr <- maybe_log_not_expr (WS_ "and"             WS_ maybe_log_not_expr)*
+maybe_log_not_expr <- "not" WS_ maybe_log_not_expr / maybe_cmp_expr
+maybe_cmp_expr     <- maybe_or_expr      (WS r"==|!=|<=|>=|<|>" WS maybe_or_expr)*
+maybe_or_expr      <- maybe_xor_expr     (WS "|"                WS maybe_xor_expr)*
+maybe_xor_expr     <- maybe_and_expr     (WS "^"                WS maybe_and_expr)*
+maybe_and_expr     <- maybe_shift_expr   (WS "&"                WS maybe_shift_expr)*
+maybe_shift_expr   <- maybe_arith_expr   (WS r"<<|>>"           WS maybe_arith_expr)*
+maybe_arith_expr   <- maybe_prod_expr    (WS r"\+|-"            WS maybe_prod_expr)*
+maybe_prod_expr    <- maybe_unary_expr   (WS r"\*|//|%"         WS maybe_unary_expr)*
+maybe_unary_expr   <- r"\+|-|!" WS maybe_unary_expr / maybe_peren_expr
+maybe_peren_expr   <- "(" WS expr WS ")" / atom
 
 # Atoms
 atom <- function_call
@@ -56,7 +58,7 @@ atom <- function_call
       / boolean
       / number
 
-variable  <- identifier WS (subscript WS)*
+variable  <- identifier (WS subscript)*
 subscript <- "[" WS expr WS "]"
 
 function_call           <- identifier WS function_call_arguments
@@ -64,7 +66,7 @@ function_call_arguments <- "(" WS (expr WS ("," WS expr WS)* ","?)? WS ")"
 
 # Literals
 identifier    <- !reserved_word r"[a-zA-Z_][a-zA-Z0-9_]*"
-reserved_word <- r"(if|else|elif|elseif|for|each|foreach|in|to|while|return|[Tt]rue|[Ff]alse)(?![a-zA-Z0-9_])"
+reserved_word <- r"(if|else|elif|elseif|for|each|foreach|in|to|while|return|[Tt]rue|[Ff]alse|and|or|not)(?![a-zA-Z0-9_])"
 boolean       <- ("True" / "False")
 number        <- r"(0[bB][01]+)|(0[xX][0-9a-fA-F]+)|([0-9]+)"
 empty_map     <- "{" WS "}"

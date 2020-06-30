@@ -5,9 +5,7 @@ transfomer.
 
 import pytest  # type: ignore
 
-from typing import Any, List, Optional, Union, cast
-
-from itertools import dropwhile
+from typing import Any, List, Optional, Union, cast, Mapping, Iterable
 
 from textwrap import indent, dedent
 
@@ -34,7 +32,6 @@ from vc2_pseudocode.ast import (
     AssignmentStmt,
     AssignmentOp,
     ReturnStmt,
-    PerenExpr,
     UnaryOp,
     UnaryExpr,
     BinaryOp,
@@ -511,7 +508,7 @@ def parse_expr(string: str) -> Expr:
 @pytest.mark.parametrize("spacing", ["", " "])
 @pytest.mark.parametrize("op", UnaryOp)
 def test_unary_expr(spacing: str, op: UnaryOp) -> None:
-    expr = parse_expr("{}{}foo".format(op.value, spacing))
+    expr = parse_expr("{}{} foo".format(op.value, spacing))
     assert isinstance(expr, UnaryExpr)
 
     assert equal_ignoring_offsets(
@@ -521,10 +518,10 @@ def test_unary_expr(spacing: str, op: UnaryOp) -> None:
 
 @pytest.mark.parametrize("op", UnaryOp)
 def test_unary_expr_right_associativity(op: UnaryOp) -> None:
-    expr = parse_expr("{}{}foo".format(op.value, op.value))
+    expr = parse_expr("{} {} foo".format(op.value, op.value))
     assert isinstance(expr, UnaryExpr)
 
-    assert expr.offset == expr.value.offset - 1
+    assert expr.offset == expr.value.offset - (len(op.value) + 1)
     assert equal_ignoring_offsets(
         expr, UnaryExpr(0, op, UnaryExpr(0, op, VariableExpr(Variable(0, "foo"))))
     )
@@ -533,6 +530,10 @@ def test_unary_expr_right_associativity(op: UnaryOp) -> None:
 @pytest.mark.parametrize("spacing", ["", " "])
 @pytest.mark.parametrize("op", BinaryOp)
 def test_binary_expr(spacing: str, op: BinaryOp) -> None:
+    # Special case: and/or *require* whitespace
+    if spacing == "" and op in (BinaryOp.logical_and, BinaryOp.logical_or):
+        return
+
     expr = parse_expr("foo{}{}{}bar".format(spacing, op.value, spacing))
     assert isinstance(expr, BinaryExpr)
 
@@ -560,122 +561,222 @@ def test_binary_expr_left_associativity(op: BinaryOp) -> None:
     )
 
 
-# Ordered from highest to lowest precedence
-OPERATOR_PRECEDENCE_TABLE = [
-    {"*", "//"},
-    {"+", "-"},
-    {"<<", ">>"},
-    {"&"},
-    {"^"},
-    {"|"},
-    {"<=", ">=", "<", ">"},
-    {"==", "!="},
-]
+# Operator precedence scores: higher score = higher precedence
+OPERATOR_PRECEDENCE_TABLE: Mapping[Union[BinaryOp, UnaryOp], int] = {
+    op: score
+    for score, ops in enumerate(
+        reversed(
+            [
+                # Shown in high-to-low order
+                [UnaryOp(o) for o in ["+", "-", "!"]],
+                [BinaryOp(o) for o in ["*", "//", "%"]],
+                [BinaryOp(o) for o in ["+", "-"]],
+                [BinaryOp(o) for o in ["<<", ">>"]],
+                [BinaryOp(o) for o in ["&"]],
+                [BinaryOp(o) for o in ["^"]],
+                [BinaryOp(o) for o in ["|"]],
+                [BinaryOp(o) for o in ["==", "!=", "<=", ">=", "<", ">"]],
+                [UnaryOp(o) for o in ["not"]],
+                [BinaryOp(o) for o in ["and"]],
+                [BinaryOp(o) for o in ["or"]],
+            ]
+        )
+    )
+    for op in cast(Iterable[Union[BinaryOp, UnaryOp]], ops)
+}
+
+
+def test_operator_precedence_table_completeness() -> None:
+    assert set(OPERATOR_PRECEDENCE_TABLE) == set(BinaryOp) | set(UnaryOp)
+
+
+def test_operator_precedence_table_sanity() -> None:
+    # Check all operators with same precedence are of the same type (i.e.
+    # all binary or all unary)
+    for score in set(OPERATOR_PRECEDENCE_TABLE.values()):
+        types = set(
+            type(op) for op, s in OPERATOR_PRECEDENCE_TABLE.items() if score == s
+        )
+        assert len(types) == 1
 
 
 @pytest.mark.parametrize(
-    "target_op", [op for ops in OPERATOR_PRECEDENCE_TABLE for op in ops]
+    "op", [op for op in OPERATOR_PRECEDENCE_TABLE if isinstance(op, BinaryOp)]
 )
-def test_binary_operator_precedence(target_op: str) -> None:
-    same_or_lower = dropwhile(
-        lambda row: target_op not in row, OPERATOR_PRECEDENCE_TABLE
-    )
-    same_precedence = next(same_or_lower)
-    lower_precedence = {op for ops in same_or_lower for op in ops}
+def test_binary_operators(op: BinaryOp) -> None:
+    score = OPERATOR_PRECEDENCE_TABLE[op]
 
-    # Check when combined with same precidence, we're left associative
-    for other_op in same_precedence:
-        for op1, op2 in [(target_op, other_op), (other_op, target_op)]:
-            expr = parse_expr("a {} b {} c".format(op1, op2))
+    # Check left-associative with same precedence
+    for other_op in [
+        other_op
+        for other_op, other_score in OPERATOR_PRECEDENCE_TABLE.items()
+        if other_score == score
+    ]:
+        assert isinstance(other_op, BinaryOp)
+        for op1, op2 in [(op, other_op), (other_op, op)]:
+            expr = parse_expr(f"a {op1.value} b {op2.value} c")
             assert equal_ignoring_offsets(
                 expr,
                 BinaryExpr(
                     BinaryExpr(
                         VariableExpr(Variable(0, "a")),
-                        BinaryOp(op1),
+                        op1,
                         VariableExpr(Variable(0, "b")),
                     ),
-                    BinaryOp(op2),
+                    op2,
                     VariableExpr(Variable(0, "c")),
                 ),
             )
 
-    for other_op in lower_precedence:
-        # Check when combined with lower precidence, this operator has higher
-        # precidence
-        expr = parse_expr("a {} b {} c".format(target_op, other_op))
+    # Check when combined with lower-precedence binary op, this op has higher
+    # precedence
+    for other_op in [
+        other_op
+        for other_op, other_score in OPERATOR_PRECEDENCE_TABLE.items()
+        if other_score < score and isinstance(other_op, BinaryOp)
+    ]:
+        expr = parse_expr(f"a {op.value} b {other_op.value} c")
         assert equal_ignoring_offsets(
             expr,
             BinaryExpr(
                 BinaryExpr(
-                    VariableExpr(Variable(0, "a")),
-                    BinaryOp(target_op),
-                    VariableExpr(Variable(0, "b")),
+                    VariableExpr(Variable(0, "a")), op, VariableExpr(Variable(0, "b")),
                 ),
-                BinaryOp(other_op),
+                other_op,
                 VariableExpr(Variable(0, "c")),
             ),
         )
-        expr = parse_expr("a {} b {} c".format(other_op, target_op))
+
+        expr = parse_expr(f"a {other_op.value} b {op.value} c")
         assert equal_ignoring_offsets(
             expr,
             BinaryExpr(
                 VariableExpr(Variable(0, "a")),
-                BinaryOp(other_op),
+                other_op,
                 BinaryExpr(
-                    VariableExpr(Variable(0, "b")),
-                    BinaryOp(target_op),
-                    VariableExpr(Variable(0, "c")),
-                ),
-            ),
-        )
-        # Except when perentheses are used
-        expr = parse_expr("(a {} b) {} c".format(other_op, target_op))
-        assert equal_ignoring_offsets(
-            expr,
-            BinaryExpr(
-                PerenExpr(
-                    0,
-                    0,
-                    BinaryExpr(
-                        VariableExpr(Variable(0, "a")),
-                        BinaryOp(other_op),
-                        VariableExpr(Variable(0, "b")),
-                    ),
-                ),
-                BinaryOp(target_op),
-                VariableExpr(Variable(0, "c")),
-            ),
-        )
-        expr = parse_expr("a {} (b {} c)".format(target_op, other_op))
-        assert equal_ignoring_offsets(
-            expr,
-            BinaryExpr(
-                VariableExpr(Variable(0, "a")),
-                BinaryOp(target_op),
-                PerenExpr(
-                    0,
-                    0,
-                    BinaryExpr(
-                        VariableExpr(Variable(0, "b")),
-                        BinaryOp(other_op),
-                        VariableExpr(Variable(0, "c")),
-                    ),
+                    VariableExpr(Variable(0, "b")), op, VariableExpr(Variable(0, "c")),
                 ),
             ),
         )
 
-    # Check that lower precidence than unary operators
-    for unary_op in UnaryOp:
-        expr = parse_expr("{} a {} b".format(unary_op.value, target_op))
+    # Check when combined with lower-precedence unary op, this op has higher
+    # precedence
+    for other_op in [
+        other_op
+        for other_op, other_score in OPERATOR_PRECEDENCE_TABLE.items()
+        if other_score < score and isinstance(other_op, UnaryOp)
+    ]:
+        expr = parse_expr(f"{other_op.value} a {op.value} b")
+        assert equal_ignoring_offsets(
+            expr,
+            UnaryExpr(
+                0,
+                other_op,
+                BinaryExpr(
+                    VariableExpr(Variable(0, "a")), op, VariableExpr(Variable(0, "b")),
+                ),
+            ),
+        )
+
+        # Special case: the 'not' operator cannot be used on the RHS of a
+        # binary expression (a quirk of the grammar, shared with other
+        # languages)
+        if other_op == UnaryOp.logical_not:
+            with pytest.raises(PseudocodeParseError):
+                parse_expr(f"a {op.value} {other_op.value} b")
+        else:
+            expr = parse_expr(f"a {op.value} {other_op.value} b")
+            assert equal_ignoring_offsets(
+                expr,
+                BinaryExpr(
+                    VariableExpr(Variable(0, "a")),
+                    op,
+                    UnaryExpr(0, other_op, VariableExpr(Variable(0, "b"))),
+                ),
+            )
+
+
+@pytest.mark.parametrize(
+    "op", [op for op in OPERATOR_PRECEDENCE_TABLE if isinstance(op, UnaryOp)]
+)
+def test_unary_operators(op: UnaryOp) -> None:
+    score = OPERATOR_PRECEDENCE_TABLE[op]
+
+    # Check right-associative with same precedence
+    for other_op in [
+        other_op
+        for other_op, other_score in OPERATOR_PRECEDENCE_TABLE.items()
+        if other_score == score
+    ]:
+        assert isinstance(other_op, UnaryOp)
+        for op1, op2 in [(op, other_op), (other_op, op)]:
+            expr = parse_expr(f"{op1.value} {op2.value} a")
+            assert equal_ignoring_offsets(
+                expr,
+                UnaryExpr(0, op1, UnaryExpr(0, op2, VariableExpr(Variable(0, "a")),),),
+            )
+
+    # Check when combined with lower-precedence binary op, this op has higher
+    # precedence
+    for other_op in [
+        other_op
+        for other_op, other_score in OPERATOR_PRECEDENCE_TABLE.items()
+        if other_score < score and isinstance(other_op, BinaryOp)
+    ]:
+        expr = parse_expr(f"{op.value} a {other_op.value} b")
         assert equal_ignoring_offsets(
             expr,
             BinaryExpr(
-                UnaryExpr(0, unary_op, VariableExpr(Variable(0, "a"))),
-                BinaryOp(target_op),
+                UnaryExpr(0, op, VariableExpr(Variable(0, "a"))),
+                other_op,
                 VariableExpr(Variable(0, "b")),
             ),
         )
+
+        expr = parse_expr(f"a {other_op.value} {op.value} b")
+        assert equal_ignoring_offsets(
+            expr,
+            BinaryExpr(
+                VariableExpr(Variable(0, "a")),
+                other_op,
+                UnaryExpr(0, op, VariableExpr(Variable(0, "b"))),
+            ),
+        )
+
+    # Check when combined with other unary ops, the ops are processed
+    # left-to-right regardless
+    for other_op in [
+        other_op
+        for other_op, other_score in OPERATOR_PRECEDENCE_TABLE.items()
+        if isinstance(other_op, UnaryOp)
+    ]:
+        # NB: the 'not' operator cannot be used on the RHS of a
+        # unary expression (except with itself) (a quirk of the grammar, shared
+        # with other languages)
+
+        if op == UnaryOp.logical_not and op != other_op:
+            with pytest.raises(PseudocodeParseError):
+                parse_expr(f"{other_op.value} {op.value} a")
+        else:
+            expr = parse_expr(f"{other_op.value} {op.value} a")
+            assert equal_ignoring_offsets(
+                expr,
+                UnaryExpr(
+                    0, other_op, UnaryExpr(0, op, VariableExpr(Variable(0, "a"))),
+                ),
+            )
+
+        if other_op == UnaryOp.logical_not and op != other_op:
+            with pytest.raises(PseudocodeParseError):
+                parse_expr(f"{op.value} {other_op.value} a")
+        else:
+            expr = parse_expr(f"{op.value} {other_op.value} a")
+            assert equal_ignoring_offsets(
+                expr,
+                UnaryExpr(
+                    0, op, UnaryExpr(0, other_op, VariableExpr(Variable(0, "a"))),
+                ),
+            )
 
 
 @pytest.mark.parametrize(
@@ -1476,6 +1577,132 @@ def test_comment_capture(string: str, exp_comments: Optional[List[Comment]]) -> 
                 Expected <expression>
             """,
         ),
+        # Missing peren expression
+        (
+            """
+                foo(a):
+                    return ()
+            """,
+            """
+                        return ()
+                                ^
+                Expected <expression>
+            """,
+        ),
+        # Missing closing peren and expression
+        (
+            """
+                foo(a):
+                    return (
+            """,
+            """
+                        return (
+                                ^
+                Expected <expression>
+            """,
+        ),
+        # Missing closing peren
+        (
+            """
+                foo(a):
+                    return (1
+            """,
+            """
+                        return (1
+                                 ^
+                Expected ')' or <operator>
+            """,
+        ),
+        # Missing space after not
+        (
+            """
+                foo(a):
+                    return not-1
+            """,
+            """
+                        return not-1
+                                  ^
+                Expected <space>
+            """,
+        ),
+        # Missing space before and
+        (
+            """
+                foo(a):
+                    return 1and -2
+            """,
+            """
+                        return 1and -2
+                                ^
+                Expected <operator>
+            """,
+        ),
+        # Missing space after and
+        (
+            """
+                foo(a):
+                    return 1 and-2
+            """,
+            """
+                        return 1 and-2
+                                    ^
+                Expected <space>
+            """,
+        ),
+        # Missing space before or
+        (
+            """
+                foo(a):
+                    return 1or -2
+            """,
+            """
+                        return 1or -2
+                                ^
+                Expected <operator>
+            """,
+        ),
+        # Missing space after or
+        (
+            """
+                foo(a):
+                    return 1 or-2
+            """,
+            """
+                        return 1 or-2
+                                   ^
+                Expected <space>
+            """,
+        ),
+    ]
+    + [
+        # Missing unary-op operand
+        (
+            f"""
+                foo(a):
+                    return ({op.value} )
+            """,
+            f"""
+                        return ({op.value} )
+                                 {" "*len(op.value)}^
+                Expected <expression>
+            """,
+        )
+        for op in UnaryOp
+    ]
+    + [
+        # Missing binary-op operand
+        (
+            f"""
+                foo(a):
+                    return (1 {op.value} )
+            """,
+            f"""
+                        return (1 {op.value} )
+                                   {" "*len(op.value)}^
+                Expected <expression>
+            """,
+        )
+        for op in BinaryOp
     ],
 )
 def test_parse_error_messages(string: str, exp_error: str) -> None:

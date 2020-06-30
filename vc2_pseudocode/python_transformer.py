@@ -12,7 +12,7 @@ translate pseudocode into Python. Alternatively, the lower-level
 :py:class:`PythonTransformer` may be used to transform a pseudocode AST.
 """
 
-from typing import List, Iterable, Union, Mapping, Optional, Tuple
+from typing import List, Iterable, Union, Mapping, Optional, Tuple, cast
 
 from textwrap import indent
 
@@ -114,25 +114,30 @@ class InvalidPowArgumentsError(PythonTransformationError):
         return "The pow function expects exactly two arguments."
 
 
-PYTHON_BINARY_OPERATOR_PRECEDENCE: Mapping[BinaryOp, int] = {
-    BinaryOp(op): precedence
-    for precedence, ops in enumerate(
+PYTHON_OPERATOR_PRECEDENCE_TABLE: Mapping[Union[BinaryOp, UnaryOp], int] = {
+    op: score
+    for score, ops in enumerate(
         reversed(
             [
-                ["*", "//", "%"],
-                ["+", "-"],
-                ["<<", ">>"],
-                ["&"],
-                ["^"],
-                ["|"],
-                ["==", "!=", "<", "<=", ">", ">="],
+                # Shown in high-to-low order
+                [UnaryOp(o) for o in ["+", "-", "!"]],
+                [BinaryOp(o) for o in ["*", "//", "%"]],
+                [BinaryOp(o) for o in ["+", "-"]],
+                [BinaryOp(o) for o in ["<<", ">>"]],
+                [BinaryOp(o) for o in ["&"]],
+                [BinaryOp(o) for o in ["^"]],
+                [BinaryOp(o) for o in ["|"]],
+                [BinaryOp(o) for o in ["==", "!=", "<=", ">=", "<", ">"]],
+                [UnaryOp(o) for o in ["not"]],
+                [BinaryOp(o) for o in ["and"]],
+                [BinaryOp(o) for o in ["or"]],
             ]
         )
     )
-    for op in ops
+    for op in cast(Iterable[Union[BinaryOp, UnaryOp]], ops)
 }
 """
-Lookup giving a precedence score for each binary operator. A higher score means
+Lookup giving a precedence score for each operator. A higher score means
 higher precedence.
 """
 
@@ -503,8 +508,13 @@ class PythonTransformer:
 
     def _transform_unary_expr(self, expr: UnaryExpr) -> str:
         op = expr.op.value if expr.op != UnaryOp("!") else "~"
+        space = " " if op == "not" else ""
         value = self._transform_expr(expr.value)
-        if isinstance(expr.value, BinaryExpr) or is_pow(expr.value):
+        if (
+            isinstance(expr.value, (BinaryExpr, UnaryExpr))
+            and PYTHON_OPERATOR_PRECEDENCE_TABLE[expr.value.op]
+            < PYTHON_OPERATOR_PRECEDENCE_TABLE[expr.op]
+        ) or is_pow(expr.value):
             # NB: Unary operators have higher precedence in Python than binary
             # operators and so perentheses must be added here.
             #
@@ -512,12 +522,12 @@ class PythonTransformer:
             # has higher precedence than the unary operators and therefore this
             # isn't required. This is a standard Python convention which aids
             # readability.
-            return f"{op}({value})"
+            return f"{op}{space}({value})"
         else:
             # All non-binary expressions have higher operator precedence in
             # Python than unary expressions (e.g. function application or
             # subscripting)
-            return f"{op}{value}"
+            return f"{op}{space}{value}"
 
     def _transform_binary_expr(self, expr: BinaryExpr) -> str:
         lhs = self._transform_expr(expr.lhs)
@@ -526,16 +536,12 @@ class PythonTransformer:
 
         # Decide perentheses for LHS
         #
-        # All non-binary expressions have higher precedence than binary
-        # operators (e.g. function application, subscripting and unary
-        # operators) and so don't require the addition of perentheses.
-        #
         # Python's binary operators are left-associative so when LHS tree has
         # same operator precedence, no brackets are required to achieve same
         # grouping.
-        if isinstance(expr.lhs, BinaryExpr) and (
-            PYTHON_BINARY_OPERATOR_PRECEDENCE[expr.lhs.op]
-            < PYTHON_BINARY_OPERATOR_PRECEDENCE[expr.op]
+        if isinstance(expr.lhs, (BinaryExpr, UnaryExpr)) and (
+            PYTHON_OPERATOR_PRECEDENCE_TABLE[expr.lhs.op]
+            < PYTHON_OPERATOR_PRECEDENCE_TABLE[expr.op]
         ):
             lhs = f"({lhs})"
 
@@ -544,9 +550,9 @@ class PythonTransformer:
         # Python's binary operators are left-associative so when RHS tree has
         # same operator precedence, brackets *are* required to achieve same
         # grouping.
-        if isinstance(expr.rhs, BinaryExpr) and (
-            PYTHON_BINARY_OPERATOR_PRECEDENCE[expr.rhs.op]
-            <= PYTHON_BINARY_OPERATOR_PRECEDENCE[expr.op]
+        if isinstance(expr.rhs, (BinaryExpr, UnaryExpr)) and (
+            PYTHON_OPERATOR_PRECEDENCE_TABLE[expr.rhs.op]
+            <= PYTHON_OPERATOR_PRECEDENCE_TABLE[expr.op]
         ):
             rhs = f"({rhs})"
 

@@ -8,6 +8,8 @@ import _ast
 from textwrap import dedent
 
 from vc2_pseudocode.ast import (
+    Listing,
+    Function,
     ReturnStmt,
     Expr,
     PerenExpr,
@@ -26,7 +28,7 @@ from vc2_pseudocode.parser import parse
 from vc2_pseudocode.python_transformer import (
     UndefinedArrayOrMapError,
     InvalidPowArgumentsError,
-    PYTHON_BINARY_OPERATOR_PRECEDENCE,
+    PYTHON_OPERATOR_PRECEDENCE_TABLE,
     expr_add_one,
     PythonTransformer,
     pseudocode_to_python,
@@ -34,7 +36,7 @@ from vc2_pseudocode.python_transformer import (
 
 
 def test_binary_op_precedence_table_completeness() -> None:
-    assert set(PYTHON_BINARY_OPERATOR_PRECEDENCE) == set(BinaryOp)
+    assert set(PYTHON_OPERATOR_PRECEDENCE_TABLE) == set(BinaryOp) | set(UnaryOp)
 
 
 class TestExprAddOne:
@@ -384,12 +386,12 @@ class TestExprAddOne:
         # Unary expressions are transformed appropriately
         (
             """
-            foo(a, b, c):
-                bar(!a, +b, -c)
+            foo(a, b, c, d):
+                bar(!a, +b, -c, not d)
             """,
             """
-            def foo(a, b, c):
-                bar(~a, +b, -c)
+            def foo(a, b, c, d):
+                bar(~a, +b, -c, not d)
             """,
         ),
         # Binary expressions (extra brackets not added as precedence rules
@@ -399,13 +401,13 @@ class TestExprAddOne:
             foo(a, b, c):
                 bar(a + b + c)
                 bar(a * b // c)
-                bar(a + !b & c != 0)
+                bar(a + !b & c != 0 or 1)
             """,
             """
             def foo(a, b, c):
                 bar(a + b + c)
                 bar(a * b // c)
-                bar(a + ~b & c != 0)
+                bar(a + ~b & c != 0 or 1)
             """,
         ),
         # Exponentiation
@@ -898,6 +900,14 @@ class PythonToBracketed(ast.NodeTransformer):
             left = f"({left} {op} {right})"
         return left
 
+    def visit_BoolOp(self, node: _ast.BoolOp) -> str:
+        left = cast(str, self.visit(node.values[0]))
+        op = self.visit(node.op)
+        for right in node.values[1:]:
+            right = self.visit(right)
+            left = f"({left} {op} {right})"
+        return left
+
     def visit_BinOp(self, node: _ast.BinOp) -> str:
         left = self.visit(node.left)
         op = self.visit(node.op)
@@ -963,6 +973,12 @@ class PythonToBracketed(ast.NodeTransformer):
     def visit_GtE(self, node: _ast.GtE) -> str:
         return ">="
 
+    def visit_And(self, node: _ast.And) -> str:
+        return "and"
+
+    def visit_Or(self, node: _ast.Or) -> str:
+        return "or"
+
     def visit_Invert(self, node: _ast.Invert) -> str:
         return "!"
 
@@ -971,6 +987,9 @@ class PythonToBracketed(ast.NodeTransformer):
 
     def visit_USub(self, node: _ast.USub) -> str:
         return "-"
+
+    def visit_Not(self, node: _ast.Not) -> str:
+        return "not "
 
 
 def strip_peren_from_pseudocode_expr(expr: Expr) -> Expr:
@@ -1002,7 +1021,8 @@ def pseudocode_to_bracketed(expr: Expr) -> str:
     if isinstance(expr, UnaryExpr):
         op = expr.op.value
         value = pseudocode_to_bracketed(expr.value)
-        return f"({op}{value})"
+        space = " " if op == "not" else ""
+        return f"({op}{space}{value})"
     elif isinstance(expr, BinaryExpr):
         lhs = pseudocode_to_bracketed(expr.lhs)
         op = expr.op.value
@@ -1023,11 +1043,19 @@ def pseudocode_to_bracketed(expr: Expr) -> str:
     "expr_string",
     (
         # Check associativity of unary operations
-        [f"{op.value}{op.value}a" for op in UnaryOp]
+        [f"{op.value} {op.value} a" for op in UnaryOp]
         # Check precedence of unary-vs-pow/binary operations
-        + [f"{uo.value}a {bo.value} {uo.value}b" for uo in UnaryOp for bo in BinaryOp]
-        + [f"pow({uo.value}a, {uo.value}b)" for uo in UnaryOp]
-        + [f"{uo.value}pow(a, b)" for uo in UnaryOp]
+        + [f"{uo.value} a {bo.value} b" for uo in UnaryOp for bo in BinaryOp]
+        + [
+            f"a {bo.value} {uo.value} b"
+            for uo in UnaryOp
+            for bo in BinaryOp
+            # This special case is syntactically invalid (in the pseudocode and
+            # in Python!)
+            if uo != UnaryOp.logical_not
+        ]
+        + [f"pow({uo.value} a, {uo.value} b)" for uo in UnaryOp]
+        + [f"{uo.value} pow(a, b)" for uo in UnaryOp]
         # Check precedence of binary operations
         + [f"a {ao.value} b {bo.value} c" for ao in BinaryOp for bo in BinaryOp]
         + [f"(a {ao.value} b) {bo.value} c" for ao in BinaryOp for bo in BinaryOp]
@@ -1042,7 +1070,6 @@ def pseudocode_to_bracketed(expr: Expr) -> str:
     ),
 )
 def test_operator_precedence(expr_string: str) -> None:
-    print(expr_string)
     pseudocode = f"""
         foo(a, b, c):
             return {expr_string}
@@ -1069,6 +1096,39 @@ def test_operator_precedence(expr_string: str) -> None:
     python_bracketed = PythonToBracketed().visit(python_ast)
 
     assert python_bracketed == pseudocode_bracketed
+
+
+def test_generating_not_on_rhs_of_binary_op() -> None:
+    transformer = PythonTransformer(" ")
+    listing = Listing(
+        [
+            Function(
+                0,
+                "foo",
+                [Variable(0, "a"), Variable(0, "b")],
+                [
+                    ReturnStmt(
+                        0,
+                        BinaryExpr(
+                            VariableExpr(Variable(0, "a")),
+                            BinaryOp("+"),
+                            UnaryExpr(
+                                0, UnaryOp("not"), VariableExpr(Variable(0, "b"))
+                            ),
+                        ),
+                    ),
+                ],
+            ),
+        ]
+    )
+
+    # Generate a fully bracketed expression for the generated Python's parse tree
+    python = transformer.transform(listing)
+    python_expr = python.split("\n")[-1].partition("return ")[2]
+    python_ast = ast.parse(python_expr, mode="eval")
+    python_bracketed = PythonToBracketed().visit(python_ast)
+
+    assert python_bracketed == "(a + (not b))"
 
 
 def test_pseudocode_to_python() -> None:

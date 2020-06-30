@@ -23,6 +23,19 @@ parse_error_default_expr_explanations: Mapping[
     RuleExpr("stmt"): "<statement>",
     RuleExpr("single_line_stmt"): "<single-line-statement>",
     RuleExpr("identifier"): "<identifier>",
+    # Expression sub-rules
+    RuleExpr("maybe_log_or_expr"): "<expression>",
+    RuleExpr("maybe_log_and_expr"): "<expression>",
+    RuleExpr("maybe_log_not_expr"): "<expression>",
+    RuleExpr("maybe_cmp_expr"): "<expression>",
+    RuleExpr("maybe_or_expr"): "<expression>",
+    RuleExpr("maybe_xor_expr"): "<expression>",
+    RuleExpr("maybe_and_expr"): "<expression>",
+    RuleExpr("maybe_shift_expr"): "<expression>",
+    RuleExpr("maybe_arith_expr"): "<expression>",
+    RuleExpr("maybe_prod_expr"): "<expression>",
+    RuleExpr("maybe_unary_expr"): "<expression>",
+    RuleExpr("maybe_peren_expr"): "<expression>",
     # Optional whitespace
     RuleExpr("WS"): None,
     # Mandatory vertical whitespace
@@ -35,8 +48,10 @@ parse_error_default_expr_explanations: Mapping[
     RuleExpr("H_SPACE"): "<space>",
     # Operators
     RegexExpr(re.compile(r"<<|>>", re.DOTALL)): "<operator>",
-    RegexExpr(re.compile(r"<=|>=|<|>", re.DOTALL)): "<operator>",
-    RegexExpr(re.compile(r"==|!=", re.DOTALL)): "<operator>",
+    RegexExpr(re.compile(r"==|!=|<=|>=|<|>", re.DOTALL)): "<operator>",
+    RegexExpr(re.compile(r"not", re.DOTALL)): "<operator>",
+    RegexExpr(re.compile(r"and", re.DOTALL)): "<operator>",
+    RegexExpr(re.compile(r"or", re.DOTALL)): "<operator>",
     RegexExpr(re.compile(r"\&", re.DOTALL)): "<operator>",
     RegexExpr(re.compile(r"\*|//|%", re.DOTALL)): "<operator>",
     RegexExpr(re.compile(r"\+|-", re.DOTALL)): "<operator>",
