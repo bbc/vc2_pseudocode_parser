@@ -114,6 +114,27 @@ class InvalidPowArgumentsError(PythonTransformationError):
         return "The pow function expects exactly two arguments."
 
 
+@dataclass
+class VariableCalledAsFunctionError(PythonTransformationError):
+    function_name: str
+
+    @classmethod
+    def from_function_call_expr(
+        cls, source: str, call: FunctionCallExpr
+    ) -> "VariableCalledAsFunctionError":
+        """
+        Create an :py:class:`VariableCalledAsFunctionError` for the function call
+        provided.
+        """
+        line, column = offset_to_line_and_column(source, call.offset)
+        snippet = extract_line(source, line)
+        return cls(line, column, snippet, call.name)
+
+    @property
+    def explanation(self) -> str:
+        return f"Attempted to call variable {self.function_name} as a function."
+
+
 PYTHON_OPERATOR_PRECEDENCE_TABLE: Mapping[Union[BinaryOp, UnaryOp], int] = {
     op: score
     for score, ops in enumerate(
@@ -562,6 +583,12 @@ class PythonTransformer:
 
     def _transform_function_call_expr(self, expr: FunctionCallExpr) -> str:
         name = expr.name
+
+        if self._is_name_in_scope(name):
+            raise VariableCalledAsFunctionError.from_function_call_expr(
+                self._source, expr
+            )
+
         if name == "pow":
             # Special case, transform pow function into Python's exponentiation
             # operator

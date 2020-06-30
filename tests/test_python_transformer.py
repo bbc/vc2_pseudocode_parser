@@ -28,6 +28,7 @@ from vc2_pseudocode.parser import parse
 from vc2_pseudocode.python_transformer import (
     UndefinedArrayOrMapError,
     InvalidPowArgumentsError,
+    VariableCalledAsFunctionError,
     PYTHON_OPERATOR_PRECEDENCE_TABLE,
     expr_add_one,
     PythonTransformer,
@@ -338,8 +339,7 @@ class TestExprAddOne:
                 x += 1
             """,
         ),
-        # Names not in current scope are considered labels, functions are
-        # considered a different namespace
+        # Names not in current scope are considered labels
         (
             """
             foo(a):
@@ -348,7 +348,7 @@ class TestExprAddOne:
                     bar(a, b, c, d, e)
                 for d = 1 to 3:
                     bar(a, b, c, d, e)
-                return a + b + c + d + e + a() + b() + c() + d() + e()
+                return a + b + c + d + e
             """,
             """
             def foo(a):
@@ -357,7 +357,7 @@ class TestExprAddOne:
                     bar(a, b, c, 'd', 'e')
                 for d in range(1, 4):
                     bar(a, b, c, d, 'e')
-                return a + b + c + d + 'e' + a() + b() + c() + d() + e()
+                return a + b + c + d + 'e'
             """,
         ),
         # Redefining names in nested scopes doesn't cause problems
@@ -910,6 +910,25 @@ def test_invalid_pow_arguments(pseudocode: str, exp_error: str) -> None:
     with pytest.raises(InvalidPowArgumentsError) as exc_info:
         transformer.transform(listing)
     assert str(exc_info.value) == dedent(exp_error).strip()
+
+
+def test_variable_called_as_function() -> None:
+    pseudocode = "foo(bar): bar()"
+    listing = parse(pseudocode)
+    transformer = PythonTransformer(pseudocode)
+    with pytest.raises(VariableCalledAsFunctionError) as exc_info:
+        transformer.transform(listing)
+    assert (
+        str(exc_info.value)
+        == dedent(
+            """
+            At line 1 column 11:
+                foo(bar): bar()
+                          ^
+            Attempted to call variable bar as a function.
+            """
+        ).strip()
+    )
 
 
 class PythonToBracketed(ast.NodeTransformer):
