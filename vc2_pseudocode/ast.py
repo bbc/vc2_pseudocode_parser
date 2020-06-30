@@ -280,6 +280,7 @@ class BooleanExpr(Expr):
 class NumberExpr(Expr):
     value: int
     display_base: int = 10
+    display_digits: int = 1
 
 
 @dataclass
@@ -546,11 +547,11 @@ class ToAST(ParseTreeTransformer):
         offset_end = number.end
         string = number.string
         if string.startswith("0b") or string.startswith("0B"):
-            return NumberExpr(offset, offset_end, int(string, 2), 2)
+            return NumberExpr(offset, offset_end, int(string, 2), 2, len(string) - 2)
         elif string.startswith("0x") or string.startswith("0X"):
-            return NumberExpr(offset, offset_end, int(string, 16), 16)
+            return NumberExpr(offset, offset_end, int(string, 16), 16, len(string) - 2)
         else:
-            return NumberExpr(offset, offset_end, int(string), 10)
+            return NumberExpr(offset, offset_end, int(string), 10, len(string))
 
     def identifier(self, _pt: ParseTree, children: Any) -> str:
         _la, identifier = children

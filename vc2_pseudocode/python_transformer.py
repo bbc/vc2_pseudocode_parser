@@ -635,9 +635,9 @@ class PythonTransformer:
         if expr.display_base == 10:
             return str(expr.value)
         elif expr.display_base == 2:
-            return "0b{:b}".format(expr.value)
+            return "0b{:0{}b}".format(expr.value, expr.display_digits)
         elif expr.display_base == 16:
-            return "0x{:x}".format(expr.value)
+            return "0x{:0{}X}".format(expr.value, expr.display_digits)
         else:
             raise TypeError(expr.display_base)
 

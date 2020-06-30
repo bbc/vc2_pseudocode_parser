@@ -496,11 +496,13 @@ class TestExprAddOne:
         (
             """
             foo():
-                return 132 + 0x123abc + 0b1010
+                return 192 + 0X123abc + 0B1010
+                return 00192 + 0X00123abc + 0B001010
             """,
             """
             def foo():
-                return 132 + 0x123abc + 0b1010
+                return 192 + 0x123ABC + 0b1010
+                return 192 + 0x00123ABC + 0b001010
             """,
         ),
         # Normalise vertical whitespace

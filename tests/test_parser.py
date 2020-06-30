@@ -910,51 +910,60 @@ def test_boolean_expr(string: str, exp_value: Optional[bool]) -> None:
 
 
 @pytest.mark.parametrize(
-    "string, exp_value, exp_display_base",
+    "string, exp_value, exp_display_base, exp_display_digits",
     [
         # Decimal
-        ("0", 0, 10),
-        ("000", 0, 10),
-        ("1", 1, 10),
-        ("1234567890", 1234567890, 10),
-        ("0123", 123, 10),
+        ("0", 0, 10, 1),
+        ("000", 0, 10, 3),
+        ("1", 1, 10, 1),
+        ("1234567890", 1234567890, 10, 10),
+        ("0123", 123, 10, 4),
         # Hex
-        ("0x0", 0x0, 16),
-        ("0x1", 0x1, 16),
-        ("0x1234567890ABCDEF", 0x1234567890ABCDEF, 16),
-        ("0X1234567890ABCDEF", 0x1234567890ABCDEF, 16),
-        ("0X1234567890abcdef", 0x1234567890ABCDEF, 16),
-        ("0x1234567890abcdef", 0x1234567890ABCDEF, 16),
+        ("0x0", 0x0, 16, 1),
+        ("0x1", 0x1, 16, 1),
+        ("0x1234567890ABCDEF", 0x1234567890ABCDEF, 16, 16),
+        ("0X1234567890ABCDEF", 0x1234567890ABCDEF, 16, 16),
+        ("0X1234567890abcdef", 0x1234567890ABCDEF, 16, 16),
+        ("0x1234567890abcdef", 0x1234567890ABCDEF, 16, 16),
         # Binary
-        ("0b0", 0b0, 2),
-        ("0b1", 0b1, 2),
-        ("0b10100", 0b10100, 2),
-        ("0B10100", 0b10100, 2),
+        ("0b0", 0b0, 2, 1),
+        ("0b1", 0b1, 2, 1),
+        ("0b10100", 0b10100, 2, 5),
+        ("0B10100", 0b10100, 2, 5),
         # Non-numeric char in decimal
-        ("0123b", None, None),
+        ("0123b", None, None, None),
         # Too-high digit in binary
-        ("0b123", None, None),
+        ("0b123", None, None, None),
         # Invalid char in hex
-        ("0x10g", None, None),
+        ("0x10g", None, None, None),
         # Too many leading zeros
-        ("00b100", None, None),
-        ("00x100", None, None),
+        ("00b100", None, None, None),
+        ("00x100", None, None, None),
         # Space
-        ("1 2 3", None, None),
-        ("0x 100", None, None),
-        ("0 x100", None, None),
-        ("0 x 100", None, None),
-        ("0b 100", None, None),
-        ("0 b100", None, None),
-        ("0 b 100", None, None),
+        ("1 2 3", None, None, None),
+        ("0x 100", None, None, None),
+        ("0 x100", None, None, None),
+        ("0 x 100", None, None, None),
+        ("0b 100", None, None, None),
+        ("0 b100", None, None, None),
+        ("0 b 100", None, None, None),
     ],
 )
 def test_number_expr(
-    string: str, exp_value: Optional[int], exp_display_base: Optional[int]
+    string: str,
+    exp_value: Optional[int],
+    exp_display_base: Optional[int],
+    exp_display_digits: Optional[int],
 ) -> None:
-    if exp_value is not None and exp_display_base is not None:
+    if (
+        exp_value is not None
+        and exp_display_base is not None
+        and exp_display_digits is not None
+    ):
         expr = parse_expr(string)
-        assert expr == NumberExpr(14, 14 + len(string), exp_value, exp_display_base)
+        assert expr == NumberExpr(
+            14, 14 + len(string), exp_value, exp_display_base, exp_display_digits
+        )
     else:
         with pytest.raises(PseudocodeParseError):
             parse_expr(string)
