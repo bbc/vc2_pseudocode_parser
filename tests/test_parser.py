@@ -217,6 +217,40 @@ def fcs(name: str) -> FunctionCallStmt:
                 ElseBranch(0, [fcs("c")]),
             ),
         ),
+        # Nesting with 'else' belonging to parent
+        (
+            ("if (True):\n" "    if (True):\n" "        a()\n" "else:\n" "    b()"),
+            IfElseStmt(
+                [
+                    IfBranch(
+                        0,
+                        BooleanExpr(0, True),
+                        [IfElseStmt([IfBranch(0, BooleanExpr(0, True), [fcs("a")])])],
+                    ),
+                ],
+                ElseBranch(0, [fcs("b")]),
+            ),
+        ),
+        # Nesting with 'else if' belonging to parent
+        (
+            (
+                "if (True):\n"
+                "    if (True):\n"
+                "        a()\n"
+                "else if (False):\n"
+                "    b()"
+            ),
+            IfElseStmt(
+                [
+                    IfBranch(
+                        0,
+                        BooleanExpr(0, True),
+                        [IfElseStmt([IfBranch(0, BooleanExpr(0, True), [fcs("a")])])],
+                    ),
+                    IfBranch(0, BooleanExpr(0, False), [fcs("b")],),
+                ],
+            ),
+        ),
         # Extra whitespace
         (
             "if ( True ) : a()\nelse  if ( False ): b()\nelse : c()",
@@ -257,8 +291,10 @@ def test_if_else_block(string: str, exp_if_else_stmt: Optional[IfElseStmt]) -> N
         (if_else_stmt,) = function.body
         assert isinstance(if_else_stmt, IfElseStmt)
 
-        assert if_else_stmt.offset == 11
         assert equal_ignoring_offsets(if_else_stmt, exp_if_else_stmt)
+
+        # Sanity check ofsets
+        assert if_else_stmt.offset == 11
 
         i = if_else_stmt.if_branches[0].offset
         assert string[i : i + 2] == "if"
