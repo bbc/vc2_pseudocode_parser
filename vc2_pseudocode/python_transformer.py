@@ -561,19 +561,19 @@ class PythonTransformer:
                 raise InvalidPowArgumentsError.from_function_call_expr(
                     self._source, expr
                 )
-            lhs, rhs = expr.arguments
+            lhs_expr, rhs_expr = expr.arguments
 
             # In Python, exponentiation has higher precedence than unary and
             # binary operators so we must wrap the LHS/RHS in brackets if they
             # contain a binary/unary op to ensure they remain grouped correctly.
-            if isinstance(lhs, (UnaryExpr, BinaryExpr)) or is_pow(lhs):
-                lhs = f"({self._transform_expr(lhs)})"
+            if isinstance(lhs_expr, (UnaryExpr, BinaryExpr)) or is_pow(lhs_expr):
+                lhs = f"({self._transform_expr(lhs_expr)})"
             else:
-                lhs = self._transform_expr(lhs)
-            if isinstance(rhs, (UnaryExpr, BinaryExpr)) or is_pow(rhs):
-                rhs = f"({self._transform_expr(rhs)})"
+                lhs = self._transform_expr(lhs_expr)
+            if isinstance(rhs_expr, (UnaryExpr, BinaryExpr)) or is_pow(rhs_expr):
+                rhs = f"({self._transform_expr(rhs_expr)})"
             else:
-                rhs = self._transform_expr(rhs)
+                rhs = self._transform_expr(rhs_expr)
 
             return f"{lhs} ** {rhs}"
         else:

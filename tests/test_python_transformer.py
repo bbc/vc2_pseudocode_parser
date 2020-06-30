@@ -1007,9 +1007,7 @@ def pseudocode_to_bracketed(expr: Expr) -> str:
         return f"({lhs} {op} {rhs})"
     elif isinstance(expr, FunctionCallExpr):
         assert expr.name == "pow"
-        lhs, rhs = expr.arguments
-        lhs = pseudocode_to_bracketed(lhs)
-        rhs = pseudocode_to_bracketed(rhs)
+        lhs, rhs = map(pseudocode_to_bracketed, expr.arguments)
         return f"({lhs} ** {rhs})"
     elif isinstance(expr, VariableExpr):
         assert isinstance(expr.variable, Variable)
