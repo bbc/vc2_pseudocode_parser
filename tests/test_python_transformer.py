@@ -228,6 +228,32 @@ class TestExprAddOne:
                     bar(y)
             """,
         ),
+        # For stmt from zero
+        (
+            """
+            foo(x):
+                for y = 0 to 3:
+                    bar(y)
+            """,
+            """
+            def foo(x):
+                for y in range(4):
+                    bar(y)
+            """,
+        ),
+        # For stmt from zero but not base 10
+        (
+            """
+            foo(x):
+                for y = 0x0 to 3:
+                    bar(y)
+            """,
+            """
+            def foo(x):
+                for y in range(0x0, 4):
+                    bar(y)
+            """,
+        ),
         # For stmt with add/sub final value
         (
             """

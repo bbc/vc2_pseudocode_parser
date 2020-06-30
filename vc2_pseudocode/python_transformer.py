@@ -439,14 +439,23 @@ class PythonTransformer:
     def _transform_for_stmt(self, stmt: ForStmt) -> str:
         comments_before, comment_on_line = self._consume_comments_on_or_before(stmt)
         variable = stmt.variable.name
-        start = self._transform_expr(stmt.start)
+
+        if (
+            isinstance(stmt.start, NumberExpr)
+            and stmt.start.value == 0
+            and stmt.start.display_base == 10
+        ):
+            start = ""
+        else:
+            start = f"{self._transform_expr(stmt.start)}, "
+
         end = self._transform_expr(expr_add_one(stmt.end))
 
         with self._new_scope():
             self._add_name_to_current_scope(variable)
             body = self._transform_block(stmt, stmt.body)
 
-        return f"{comments_before}for {variable} in range({start}, {end}):{comment_on_line}{body}"
+        return f"{comments_before}for {variable} in range({start}{end}):{comment_on_line}{body}"
 
     def _transform_while_stmt(self, stmt: WhileStmt) -> str:
         comments_before, comment_on_line = self._consume_comments_on_or_before(stmt)
