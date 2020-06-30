@@ -209,9 +209,9 @@ class TestExprAddOne:
             """,
             """
             def foo(x):
-                for y in (1, ):
+                for y in [1]:
                     bar(y)
-                for y in (1, 2, 3, x):
+                for y in [1, 2, 3, x]:
                     bar(y)
             """,
         ),
@@ -352,7 +352,7 @@ class TestExprAddOne:
             """
             def foo(a):
                 b = 100
-                for c in (1, 2, 3):
+                for c in [1, 2, 3]:
                     bar(a, b, c, 'd', 'e')
                 for d in range(1, 4):
                     bar(a, b, 'c', d, 'e')
@@ -369,7 +369,7 @@ class TestExprAddOne:
             """,
             """
             def foo(a):
-                for a in (1, 2, 3):
+                for a in [1, 2, 3]:
                     bar(a, 'b')
                 return a + 'b'
             """,
@@ -713,7 +713,7 @@ class TestExprAddOne:
                     foo()
 
                 # Before a for each
-                for x in (1, 2, 3):  # On a for each
+                for x in [1, 2, 3]:  # On a for each
                     # Inside a for each
                     foo()
 
@@ -753,7 +753,7 @@ class TestExprAddOne:
 
                 # Spaced before a for each
 
-                for x in (1, 2, 3):
+                for x in [1, 2, 3]:
                     foo()
 
                 # Spaced before a for
@@ -789,7 +789,7 @@ class TestExprAddOne:
                 else:  # Comment on one-liner else
                     return 0
 
-                for x in (1, 2, 3):  # Comment on one-liner for each
+                for x in [1, 2, 3]:  # Comment on one-liner for each
                     foo()
 
                 for x in range(1, 4):  # Comment on one-liner for

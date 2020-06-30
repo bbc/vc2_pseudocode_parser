@@ -326,7 +326,6 @@ class PythonTransformer:
         """
         Transform a parsed pseudocode AST into an equivalent Python program.
         """
-        self._defined_names_stack = []
         self._unconsumed_comments = [
             (self._offset_to_lineno[c.offset], c) for c in listing.comments
         ]
@@ -427,14 +426,11 @@ class PythonTransformer:
         variable = stmt.variable.name
         values = ", ".join(self._transform_expr(e) for e in stmt.values)
 
-        if len(stmt.values) == 1:
-            values += ", "
-
         with self._new_scope():
             self._add_name_to_current_scope(variable)
             body = self._transform_block(stmt, stmt.body)
 
-        return f"{comments_before}for {variable} in ({values}):{comment_on_line}{body}"
+        return f"{comments_before}for {variable} in [{values}]:{comment_on_line}{body}"
 
     def _transform_for_stmt(self, stmt: ForStmt) -> str:
         comments_before, comment_on_line = self._consume_comments_on_or_before(stmt)
