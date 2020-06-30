@@ -24,7 +24,8 @@ from vc2_pseudocode.ast import (
 from vc2_pseudocode.parser import parse
 
 from vc2_pseudocode.python_transformer import (
-    UndefinedArrayOrMap,
+    UndefinedArrayOrMapError,
+    InvalidPowArgumentsError,
     PYTHON_BINARY_OPERATOR_PRECEDENCE,
     expr_add_one,
     PythonTransformer,
@@ -405,6 +406,29 @@ class TestExprAddOne:
                 bar(a + b + c)
                 bar(a * b // c)
                 bar(a + ~b & c != 0)
+            """,
+        ),
+        # Exponentiation
+        (
+            """
+            foo(a, b, c):
+                return pow(a, b)
+                return pow(a + b, c)
+                return pow(a, b + c)
+                return pow(-a, b)
+                return pow(a, -b)
+                return -pow(a, b)
+                return pow(a, b) + pow(b, c)
+            """,
+            """
+            def foo(a, b, c):
+                return a ** b
+                return (a + b) ** c
+                return a ** (b + c)
+                return (-a) ** b
+                return a ** (-b)
+                return -(a ** b)
+                return a ** b + b ** c
             """,
         ),
         # Variable expression
@@ -800,7 +824,59 @@ def test_undefined_array_or_map(pseudocode: str, exp_error: str) -> None:
     pseudocode = dedent(pseudocode).strip()
     listing = parse(pseudocode)
     transformer = PythonTransformer(pseudocode)
-    with pytest.raises(UndefinedArrayOrMap) as exc_info:
+    with pytest.raises(UndefinedArrayOrMapError) as exc_info:
+        transformer.transform(listing)
+    assert str(exc_info.value) == dedent(exp_error).strip()
+
+
+@pytest.mark.parametrize(
+    "pseudocode, exp_error",
+    [
+        # Too-few arguments
+        (
+            """
+            foo():
+                return pow()
+            """,
+            """
+            At line 2 column 12:
+                    return pow()
+                           ^
+            The pow function expects exactly two arguments.
+            """,
+        ),
+        (
+            """
+            foo():
+                return pow(1)
+            """,
+            """
+            At line 2 column 12:
+                    return pow(1)
+                           ^
+            The pow function expects exactly two arguments.
+            """,
+        ),
+        # Too many arguments
+        (
+            """
+            foo():
+                return pow(1, 2, 3)
+            """,
+            """
+            At line 2 column 12:
+                    return pow(1, 2, 3)
+                           ^
+            The pow function expects exactly two arguments.
+            """,
+        ),
+    ],
+)
+def test_invalid_pow_arguments(pseudocode: str, exp_error: str) -> None:
+    pseudocode = dedent(pseudocode).strip()
+    listing = parse(pseudocode)
+    transformer = PythonTransformer(pseudocode)
+    with pytest.raises(InvalidPowArgumentsError) as exc_info:
         transformer.transform(listing)
     assert str(exc_info.value) == dedent(exp_error).strip()
 
@@ -863,6 +939,9 @@ class PythonToBracketed(ast.NodeTransformer):
     def visit_FloorDiv(self, node: _ast.FloorDiv) -> str:
         return "//"
 
+    def visit_Pow(self, node: _ast.Pow) -> str:
+        return "**"
+
     def visit_Eq(self, node: _ast.Eq) -> str:
         return "=="
 
@@ -906,6 +985,8 @@ def strip_peren_from_pseudocode_expr(expr: Expr) -> Expr:
         return expr
     elif isinstance(expr, VariableExpr):
         return expr
+    elif isinstance(expr, FunctionCallExpr):
+        return expr
     else:
         raise NotImplementedError(type(expr))
 
@@ -924,6 +1005,12 @@ def pseudocode_to_bracketed(expr: Expr) -> str:
         op = expr.op.value
         rhs = pseudocode_to_bracketed(expr.rhs)
         return f"({lhs} {op} {rhs})"
+    elif isinstance(expr, FunctionCallExpr):
+        assert expr.name == "pow"
+        lhs, rhs = expr.arguments
+        lhs = pseudocode_to_bracketed(lhs)
+        rhs = pseudocode_to_bracketed(rhs)
+        return f"({lhs} ** {rhs})"
     elif isinstance(expr, VariableExpr):
         assert isinstance(expr.variable, Variable)
         return expr.variable.name
@@ -936,15 +1023,25 @@ def pseudocode_to_bracketed(expr: Expr) -> str:
     (
         # Check associativity of unary operations
         [f"{op.value}{op.value}a" for op in UnaryOp]
-        # Check precedence of unary-vs-binary operations
+        # Check precedence of unary-vs-pow/binary operations
         + [f"{uo.value}a {bo.value} {uo.value}b" for uo in UnaryOp for bo in BinaryOp]
+        + [f"pow({uo.value}a, {uo.value}b)" for uo in UnaryOp]
+        + [f"{uo.value}pow(a, b)" for uo in UnaryOp]
         # Check precedence of binary operations
         + [f"a {ao.value} b {bo.value} c" for ao in BinaryOp for bo in BinaryOp]
         + [f"(a {ao.value} b) {bo.value} c" for ao in BinaryOp for bo in BinaryOp]
         + [f"a {ao.value} (b {bo.value} c)" for ao in BinaryOp for bo in BinaryOp]
+        # Check precedence of pow-vs-binary operations
+        + [f"pow(a, b {op.value} c)" for op in BinaryOp]
+        + [f"pow(a {op.value} b, c)" for op in BinaryOp]
+        + [f"pow(a, b) {op.value} c" for op in BinaryOp]
+        + [f"a {op.value} pow(b, c)" for op in BinaryOp]
+        # Check correct output associativity of power function
+        + ["pow(pow(a, b), c)", "pow(a, pow(b, c))"]
     ),
 )
 def test_operator_precedence(expr_string: str) -> None:
+    print(expr_string)
     pseudocode = f"""
         foo(a, b, c):
             return {expr_string}

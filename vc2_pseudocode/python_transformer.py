@@ -1,9 +1,11 @@
 """
 Transform a parsed AST representation of a pseudocode program into Python
 
-In general, the translation between pseudocode and Python is 'obvious'. The one
-exception is the translation of labels. Labels in in the pseudocode are
-translated into equivalent strings in Python.
+In general, the translation between pseudocode and Python is 'obvious'. The
+exceptions are as follows:
+
+* Labels in in the pseudocode are translated into equivalent strings in Python.
+* Calls to ``pow(a, b)`` are replaced with ``a ** b``.
 
 The :py:func:`pseudocode_to_python` utility function may be used to directly
 translate pseudocode into Python. Alternatively, the lower-level
@@ -72,15 +74,15 @@ class PythonTransformationError(Exception):
 
 
 @dataclass
-class UndefinedArrayOrMap(PythonTransformationError):
+class UndefinedArrayOrMapError(PythonTransformationError):
     variable_name: str
 
     @classmethod
     def from_variable_expr(
         cls, source: str, variable: Union[Variable, Subscript]
-    ) -> "UndefinedArrayOrMap":
+    ) -> "UndefinedArrayOrMapError":
         """
-        Create an :py:class:`UndefinedArrayOrMap` for the variable or subscript
+        Create an :py:class:`UndefinedArrayOrMapError` for the variable or subscript
         provided.
         """
         line, column = offset_to_line_and_column(source, variable.offset)
@@ -91,6 +93,25 @@ class UndefinedArrayOrMap(PythonTransformationError):
     @property
     def explanation(self) -> str:
         return f"Map or array '{self.variable_name}' not defined."
+
+
+@dataclass
+class InvalidPowArgumentsError(PythonTransformationError):
+    @classmethod
+    def from_function_call_expr(
+        cls, source: str, call: FunctionCallExpr
+    ) -> "InvalidPowArgumentsError":
+        """
+        Create an :py:class:`InvalidPowArgumentsError` for the function call
+        provided.
+        """
+        line, column = offset_to_line_and_column(source, call.offset)
+        snippet = extract_line(source, line)
+        return cls(line, column, snippet)
+
+    @property
+    def explanation(self) -> str:
+        return "The pow function expects exactly two arguments."
 
 
 PYTHON_BINARY_OPERATOR_PRECEDENCE: Mapping[BinaryOp, int] = {
@@ -150,6 +171,11 @@ def expr_add_one(expr: Expr) -> Expr:
             )
     else:
         return BinaryExpr(expr, BinaryOp("+"), NumberExpr(expr.offset, expr.offset, 1))
+
+
+def is_pow(expr: Expr) -> bool:
+    """Check if the provided expression is a call to the pow function."""
+    return isinstance(expr, FunctionCallExpr) and expr.name == "pow"
 
 
 class PythonTransformer:
@@ -445,7 +471,9 @@ class PythonTransformer:
             self._add_name_to_current_scope(stmt.variable.name)
 
         if not self._is_name_in_scope(stmt.variable.name):
-            raise UndefinedArrayOrMap.from_variable_expr(self._source, stmt.variable)
+            raise UndefinedArrayOrMapError.from_variable_expr(
+                self._source, stmt.variable
+            )
 
         return f"{comments_before}{variable} {op} {value}{comment_on_line}"
 
@@ -476,9 +504,14 @@ class PythonTransformer:
     def _transform_unary_expr(self, expr: UnaryExpr) -> str:
         op = expr.op.value if expr.op != UnaryOp("!") else "~"
         value = self._transform_expr(expr.value)
-        if isinstance(expr.value, BinaryExpr):
+        if isinstance(expr.value, BinaryExpr) or is_pow(expr.value):
             # NB: Unary operators have higher precedence in Python than binary
-            # operators and so perentheses must be added here
+            # operators and so perentheses must be added here.
+            #
+            # We also add brackets for exponentiation (pow/**), even though **
+            # has higher precidence than the unary operators and therefore this
+            # isn't required. This is a standard Python convention which aids
+            # readability.
             return f"{op}({value})"
         else:
             # All non-binary expressions have higher operator precidence in
@@ -521,8 +554,31 @@ class PythonTransformer:
 
     def _transform_function_call_expr(self, expr: FunctionCallExpr) -> str:
         name = expr.name
-        args = ", ".join(self._transform_expr(a) for a in expr.arguments)
-        return f"{name}({args})"
+        if name == "pow":
+            # Special case, transform pow function into Python's exponentiation
+            # operator
+            if len(expr.arguments) != 2:
+                raise InvalidPowArgumentsError.from_function_call_expr(
+                    self._source, expr
+                )
+            lhs, rhs = expr.arguments
+
+            # In Python, exponentiation has higher precedence than unary and
+            # binary operators so we must wrap the LHS/RHS in brackets if they
+            # contain a binary/unary op to ensure they remain grouped correctly.
+            if isinstance(lhs, (UnaryExpr, BinaryExpr)) or is_pow(lhs):
+                lhs = f"({self._transform_expr(lhs)})"
+            else:
+                lhs = self._transform_expr(lhs)
+            if isinstance(rhs, (UnaryExpr, BinaryExpr)) or is_pow(rhs):
+                rhs = f"({self._transform_expr(rhs)})"
+            else:
+                rhs = self._transform_expr(rhs)
+
+            return f"{lhs} ** {rhs}"
+        else:
+            args = ", ".join(self._transform_expr(a) for a in expr.arguments)
+            return f"{name}({args})"
 
     def _transform_variable_expr(self, expr: VariableExpr) -> str:
         if self._is_name_in_scope(expr.variable.name):
@@ -538,7 +594,9 @@ class PythonTransformer:
                 variable: Union[Variable, Subscript] = expr.variable
                 while not isinstance(variable, Variable):
                     variable = variable.variable
-                raise UndefinedArrayOrMap.from_variable_expr(self._source, variable)
+                raise UndefinedArrayOrMapError.from_variable_expr(
+                    self._source, variable
+                )
             else:
                 raise TypeError(type(expr.variable))  # Unreachable
 
