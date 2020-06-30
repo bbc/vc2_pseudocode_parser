@@ -361,13 +361,12 @@ class PythonTransformer:
 
     def _transform_block(self, container: ASTNode, body: List[Stmt]) -> str:
         formatted_statements = []
-        with self._new_scope():
-            last_stmt = None
-            for stmt in body:
-                if last_stmt is not None and not self._adjacent_lines(last_stmt, stmt):
-                    formatted_statements.append("")
-                formatted_statements.append(self._transform_stmt(stmt))
-                last_stmt = stmt
+        last_stmt = None
+        for stmt in body:
+            if last_stmt is not None and not self._adjacent_lines(last_stmt, stmt):
+                formatted_statements.append("")
+            formatted_statements.append(self._transform_stmt(stmt))
+            last_stmt = stmt
         statements = "\n".join(formatted_statements)
 
         return f"\n{indent(statements, self._indent)}"
@@ -426,9 +425,8 @@ class PythonTransformer:
         variable = stmt.variable.name
         values = ", ".join(self._transform_expr(e) for e in stmt.values)
 
-        with self._new_scope():
-            self._add_name_to_current_scope(variable)
-            body = self._transform_block(stmt, stmt.body)
+        self._add_name_to_current_scope(variable)
+        body = self._transform_block(stmt, stmt.body)
 
         return f"{comments_before}for {variable} in [{values}]:{comment_on_line}{body}"
 
@@ -447,9 +445,8 @@ class PythonTransformer:
 
         end = self._transform_expr(expr_add_one(stmt.end))
 
-        with self._new_scope():
-            self._add_name_to_current_scope(variable)
-            body = self._transform_block(stmt, stmt.body)
+        self._add_name_to_current_scope(variable)
+        body = self._transform_block(stmt, stmt.body)
 
         return f"{comments_before}for {variable} in range({start}{end}):{comment_on_line}{body}"
 

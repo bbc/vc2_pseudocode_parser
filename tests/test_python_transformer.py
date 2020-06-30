@@ -338,7 +338,8 @@ class TestExprAddOne:
                 x += 1
             """,
         ),
-        # Names not in current scope are considered labels
+        # Names not in current scope are considered labels, functions are
+        # considered a different namespace
         (
             """
             foo(a):
@@ -355,8 +356,8 @@ class TestExprAddOne:
                 for c in [1, 2, 3]:
                     bar(a, b, c, 'd', 'e')
                 for d in range(1, 4):
-                    bar(a, b, 'c', d, 'e')
-                return a + b + 'c' + 'd' + 'e' + a() + b() + c() + d() + e()
+                    bar(a, b, c, d, 'e')
+                return a + b + c + d + 'e' + a() + b() + c() + d() + e()
             """,
         ),
         # Redefining names in nested scopes doesn't cause problems
