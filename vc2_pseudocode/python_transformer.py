@@ -124,7 +124,7 @@ PYTHON_OPERATOR_PRECEDENCE_TABLE: Mapping[Union[BinaryOp, UnaryOp], int] = {
             [
                 # Shown in high-to-low order
                 [BinaryOp(o) for o in ["**"]],
-                [UnaryOp(o) for o in ["+", "-", "!"]],
+                [UnaryOp(o) for o in ["+", "-", "~"]],
                 [BinaryOp(o) for o in ["*", "//", "%"]],
                 [BinaryOp(o) for o in ["+", "-"]],
                 [BinaryOp(o) for o in ["<<", ">>"]],
@@ -519,7 +519,7 @@ class PythonTransformer:
         return f"({value})"
 
     def _transform_unary_expr(self, expr: UnaryExpr) -> str:
-        op = expr.op.value if expr.op != UnaryOp("!") else "~"
+        op = expr.op.value
         space = " " if op == "not" else ""
         value = self._transform_expr(expr.value)
         if isinstance(expr.value, (BinaryExpr, UnaryExpr)) and (

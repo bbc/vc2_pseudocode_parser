@@ -12,7 +12,7 @@ from itertools import chain
 class UnaryOp(Enum):
     plus = "+"
     minus = "-"
-    bitwise_not = "!"
+    bitwise_not = "~"
     logical_not = "not"
 
 
@@ -45,7 +45,7 @@ OPERATOR_PRECEDENCE_TABLE: Mapping[Union[BinaryOp, UnaryOp], int] = {
             [
                 # Shown in high-to-low order
                 [BinaryOp(o) for o in ["**"]],
-                [UnaryOp(o) for o in ["+", "-", "!"]],
+                [UnaryOp(o) for o in ["+", "-", "~"]],
                 [BinaryOp(o) for o in ["*", "//", "%"]],
                 [BinaryOp(o) for o in ["+", "-"]],
                 [BinaryOp(o) for o in ["<<", ">>"]],

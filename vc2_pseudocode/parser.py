@@ -59,7 +59,7 @@ parse_error_default_expr_explanations: Mapping[
     RegexExpr(re.compile(r"\+|-", re.DOTALL)): "<operator>",
     RegexExpr(re.compile(r"\^", re.DOTALL)): "<operator>",
     RegexExpr(re.compile(r"\|", re.DOTALL)): "<operator>",
-    RegexExpr(re.compile(r"\+|-|!", re.DOTALL)): "<operator>",
+    RegexExpr(re.compile(r"\+|-|~", re.DOTALL)): "<operator>",
     RegexExpr(re.compile(r"\(", re.DOTALL)): "'('",
     RegexExpr(re.compile(r"\)", re.DOTALL)): "')'",
     # Other

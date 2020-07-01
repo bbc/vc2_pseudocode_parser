@@ -438,7 +438,7 @@ class TestExprAddOne:
         (
             """
             foo(a, b, c, d):
-                bar(!a, +b, -c, not d)
+                bar(~a, +b, -c, not d)
             """,
             """
             def foo(a, b, c, d):
@@ -452,7 +452,7 @@ class TestExprAddOne:
             foo(a, b, c):
                 bar(a + b + c)
                 bar(a * b // c)
-                bar(a + !b & c != 0 or 1)
+                bar(a + ~b & c != 0 or 1)
             """,
             """
             def foo(a, b, c):
@@ -988,7 +988,7 @@ class PythonToBracketed(ast.NodeTransformer):
         return "or"
 
     def visit_Invert(self, node: _ast.Invert) -> str:
-        return "!"
+        return "~"
 
     def visit_UAdd(self, node: _ast.UAdd) -> str:
         return "+"
@@ -1089,9 +1089,6 @@ def test_operator_precedence(expr_string: str) -> None:
     python_expr = python.split("\n")[-1].partition("return ")[2]
     python_ast = ast.parse(python_expr, mode="eval")
     python_bracketed = PythonToBracketed().visit(python_ast)
-
-    print(pseudocode)
-    print(python)
 
     assert python_bracketed == pseudocode_bracketed
 
