@@ -538,18 +538,12 @@ class PythonTransformer:
             and PYTHON_OPERATOR_PRECEDENCE_TABLE[expr.value.op]
             < PYTHON_OPERATOR_PRECEDENCE_TABLE[expr.op]
         ) or is_pow(expr.value):
-            # NB: Unary operators have higher precedence in Python than binary
-            # operators and so perentheses must be added here.
-            #
             # We also add brackets for exponentiation (pow/**), even though **
-            # has higher precedence than the unary operators and therefore this
+            # has higher precedence all other operators and therefore this
             # isn't required. This is a standard Python convention which aids
             # readability.
             return f"{op}{space}({value})"
         else:
-            # All non-binary expressions have higher operator precedence in
-            # Python than unary expressions (e.g. function application or
-            # subscripting)
             return f"{op}{space}{value}"
 
     def _transform_binary_expr(self, expr: BinaryExpr) -> str:
