@@ -588,7 +588,7 @@ class PythonTransformer:
             # scope, as a result it must be a label (which we'll translate to a
             # string).
             if isinstance(expr.variable, Variable):
-                return repr(expr.variable.name)
+                return f'"{expr.variable.name}"'
             elif isinstance(expr.variable, Subscript):
                 # Subscripting an undefined variable is not allowed
                 variable: Union[Variable, Subscript] = expr.variable

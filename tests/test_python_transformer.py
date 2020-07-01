@@ -378,10 +378,10 @@ class TestExprAddOne:
             def foo(a):
                 b = 100
                 for c in [1, 2, 3]:
-                    bar(a, b, c, 'd', 'e')
+                    bar(a, b, c, "d", "e")
                 for d in range(1, 4):
-                    bar(a, b, c, d, 'e')
-                return a + b + c + d + 'e'
+                    bar(a, b, c, d, "e")
+                return a + b + c + d + "e"
             """,
         ),
         # Redefining names in nested scopes doesn't cause problems
@@ -395,8 +395,8 @@ class TestExprAddOne:
             """
             def foo(a):
                 for a in [1, 2, 3]:
-                    bar(a, 'b')
-                return a + 'b'
+                    bar(a, "b")
+                return a + "b"
             """,
         ),
         # Use of names in subscripts doesn't count as defining a variable
@@ -408,8 +408,8 @@ class TestExprAddOne:
             """,
             """
             def foo(a):
-                a['b'] = 'c'
-                return a + 'b' + 'c'
+                a["b"] = "c"
+                return a + "b" + "c"
             """,
         ),
         # Variable is unused until it is...
@@ -420,7 +420,7 @@ class TestExprAddOne:
             """,
             """
             def foo():
-                a = 'a'
+                a = "a"
             """,
         ),
         # Perentheses are passed through (nowever unnecessary)
