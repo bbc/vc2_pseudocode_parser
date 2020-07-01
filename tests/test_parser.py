@@ -5,13 +5,21 @@ transfomer.
 
 import pytest  # type: ignore
 
-from typing import Any, List, Optional, Union, cast, Mapping, Iterable
+from typing import Any, List, Optional, Union, cast
 
 from textwrap import indent, dedent
 
 from dataclasses import asdict
 
 from vc2_pseudocode.parser import parse, PseudocodeParseError
+
+from vc2_pseudocode.operators import (
+    BinaryOp,
+    UnaryOp,
+    OPERATOR_PRECEDENCE_TABLE,
+    OPERATOR_ASSOCIATIVITY_TABLE,
+    Associativity,
+)
 
 from vc2_pseudocode.ast import (
     ASTNode,
@@ -32,9 +40,7 @@ from vc2_pseudocode.ast import (
     AssignmentStmt,
     AssignmentOp,
     ReturnStmt,
-    UnaryOp,
     UnaryExpr,
-    BinaryOp,
     BinaryExpr,
     EmptyMapExpr,
     Comment,
@@ -516,17 +522,6 @@ def test_unary_expr(spacing: str, op: UnaryOp) -> None:
     )
 
 
-@pytest.mark.parametrize("op", UnaryOp)
-def test_unary_expr_right_associativity(op: UnaryOp) -> None:
-    expr = parse_expr("{} {} foo".format(op.value, op.value))
-    assert isinstance(expr, UnaryExpr)
-
-    assert expr.offset == expr.value.offset - (len(op.value) + 1)
-    assert equal_ignoring_offsets(
-        expr, UnaryExpr(0, op, UnaryExpr(0, op, VariableExpr(Variable(0, "foo"))))
-    )
-
-
 @pytest.mark.parametrize("spacing", ["", " "])
 @pytest.mark.parametrize("op", BinaryOp)
 def test_binary_expr(spacing: str, op: BinaryOp) -> None:
@@ -545,51 +540,6 @@ def test_binary_expr(spacing: str, op: BinaryOp) -> None:
     )
 
 
-@pytest.mark.parametrize("op", BinaryOp)
-def test_binary_expr_left_associativity(op: BinaryOp) -> None:
-    expr = parse_expr("foo {} bar {} baz".format(op.value, op.value))
-    assert isinstance(expr, BinaryExpr)
-    assert equal_ignoring_offsets(
-        expr,
-        BinaryExpr(
-            BinaryExpr(
-                VariableExpr(Variable(0, "foo")), op, VariableExpr(Variable(0, "bar")),
-            ),
-            op,
-            VariableExpr(Variable(0, "baz")),
-        ),
-    )
-
-
-# Operator precedence scores: higher score = higher precedence
-OPERATOR_PRECEDENCE_TABLE: Mapping[Union[BinaryOp, UnaryOp], int] = {
-    op: score
-    for score, ops in enumerate(
-        reversed(
-            [
-                # Shown in high-to-low order
-                [UnaryOp(o) for o in ["+", "-", "!"]],
-                [BinaryOp(o) for o in ["*", "//", "%"]],
-                [BinaryOp(o) for o in ["+", "-"]],
-                [BinaryOp(o) for o in ["<<", ">>"]],
-                [BinaryOp(o) for o in ["&"]],
-                [BinaryOp(o) for o in ["^"]],
-                [BinaryOp(o) for o in ["|"]],
-                [BinaryOp(o) for o in ["==", "!=", "<=", ">=", "<", ">"]],
-                [UnaryOp(o) for o in ["not"]],
-                [BinaryOp(o) for o in ["and"]],
-                [BinaryOp(o) for o in ["or"]],
-            ]
-        )
-    )
-    for op in cast(Iterable[Union[BinaryOp, UnaryOp]], ops)
-}
-
-
-def test_operator_precedence_table_completeness() -> None:
-    assert set(OPERATOR_PRECEDENCE_TABLE) == set(BinaryOp) | set(UnaryOp)
-
-
 def test_operator_precedence_table_sanity() -> None:
     # Check all operators with same precedence are of the same type (i.e.
     # all binary or all unary)
@@ -606,27 +556,53 @@ def test_operator_precedence_table_sanity() -> None:
 def test_binary_operators(op: BinaryOp) -> None:
     score = OPERATOR_PRECEDENCE_TABLE[op]
 
-    # Check left-associative with same precedence
+    # Check associativity with same precedence
     for other_op in [
         other_op
         for other_op, other_score in OPERATOR_PRECEDENCE_TABLE.items()
         if other_score == score
     ]:
+        # Sanity check invariant: operators with same associativity are same
+        # type
         assert isinstance(other_op, BinaryOp)
+
+        # Sanity check invariant: operators with same associativity have same
+        # associativity
+        assert (
+            OPERATOR_ASSOCIATIVITY_TABLE[op] == OPERATOR_ASSOCIATIVITY_TABLE[other_op]
+        )
+        associativity = OPERATOR_ASSOCIATIVITY_TABLE[op]
+
         for op1, op2 in [(op, other_op), (other_op, op)]:
             expr = parse_expr(f"a {op1.value} b {op2.value} c")
-            assert equal_ignoring_offsets(
-                expr,
-                BinaryExpr(
+            if associativity == Associativity.left:
+                assert equal_ignoring_offsets(
+                    expr,
+                    BinaryExpr(
+                        BinaryExpr(
+                            VariableExpr(Variable(0, "a")),
+                            op1,
+                            VariableExpr(Variable(0, "b")),
+                        ),
+                        op2,
+                        VariableExpr(Variable(0, "c")),
+                    ),
+                )
+            elif associativity == Associativity.right:
+                assert equal_ignoring_offsets(
+                    expr,
                     BinaryExpr(
                         VariableExpr(Variable(0, "a")),
                         op1,
-                        VariableExpr(Variable(0, "b")),
+                        BinaryExpr(
+                            VariableExpr(Variable(0, "b")),
+                            op2,
+                            VariableExpr(Variable(0, "c")),
+                        ),
                     ),
-                    op2,
-                    VariableExpr(Variable(0, "c")),
-                ),
-            )
+                )
+            else:
+                raise NotImplementedError(associativity)  # Unreachable...
 
     # Check when combined with lower-precedence binary op, this op has higher
     # precedence

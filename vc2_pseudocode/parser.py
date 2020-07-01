@@ -35,6 +35,7 @@ parse_error_default_expr_explanations: Mapping[
     RuleExpr("maybe_arith_expr"): "<expression>",
     RuleExpr("maybe_prod_expr"): "<expression>",
     RuleExpr("maybe_unary_expr"): "<expression>",
+    RuleExpr("maybe_pow_expr"): "<expression>",
     RuleExpr("maybe_peren_expr"): "<expression>",
     # Optional whitespace
     RuleExpr("WS"): None,
@@ -54,6 +55,7 @@ parse_error_default_expr_explanations: Mapping[
     RegexExpr(re.compile(r"or", re.DOTALL)): "<operator>",
     RegexExpr(re.compile(r"\&", re.DOTALL)): "<operator>",
     RegexExpr(re.compile(r"\*|//|%", re.DOTALL)): "<operator>",
+    RegexExpr(re.compile(r"\*\*", re.DOTALL)): "<operator>",
     RegexExpr(re.compile(r"\+|-", re.DOTALL)): "<operator>",
     RegexExpr(re.compile(r"\^", re.DOTALL)): "<operator>",
     RegexExpr(re.compile(r"\|", re.DOTALL)): "<operator>",

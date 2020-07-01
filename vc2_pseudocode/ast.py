@@ -8,6 +8,13 @@ from peggie.transformer import ParseTreeTransformer
 
 from peggie.parser import ParseTree, Alt, Regex
 
+from vc2_pseudocode.operators import (
+    BinaryOp,
+    UnaryOp,
+    OPERATOR_ASSOCIATIVITY_TABLE,
+    Associativity,
+)
+
 from enum import Enum
 
 from dataclasses import dataclass, field
@@ -194,13 +201,6 @@ class PerenExpr(Expr):
     value: Expr
 
 
-class UnaryOp(Enum):
-    plus = "+"
-    minus = "-"
-    bitwise_not = "!"
-    logical_not = "not"
-
-
 @dataclass
 class UnaryExpr(Expr):
     offset_end: int = field(init=False, repr=False)
@@ -209,27 +209,6 @@ class UnaryExpr(Expr):
 
     def __post_init__(self) -> None:
         self.offset_end = self.value.offset_end
-
-
-class BinaryOp(Enum):
-    logical_or = "or"
-    logical_and = "and"
-    eq = "=="
-    ne = "!="
-    lt = "<"
-    le = "<="
-    gt = ">"
-    ge = ">="
-    bitwise_or_ = "|"
-    bitwise_xor = "^"
-    bitwise_and_ = "&"
-    lsh = "<<"
-    rsh = ">>"
-    add = "+"
-    sub = "-"
-    mul = "*"
-    idiv = "//"
-    mod = "%"
 
 
 @dataclass
@@ -465,10 +444,32 @@ class ToAST(ParseTreeTransformer):
     maybe_log_not_expr = maybe_unary_expr
 
     def binary_expr(self, _pt: ParseTree, children: Any) -> Expr:
-        lhs, rhss = children
-        for _ws1, op, _ws2, rhs in rhss:
-            lhs = BinaryExpr(cast(Expr, lhs), BinaryOp(op.string), cast(Expr, rhs))
-        return cast(Expr, lhs)
+        lhs, rhss = cast(Tuple[Expr, Any], children)
+
+        if len(rhss) == 0:
+            return lhs
+
+        values = [lhs] + [cast(Expr, rhs) for _ws1, _op, _ws2, rhs in rhss]
+        ops = [BinaryOp(op.string) for _ws1, op, _ws2, _rhs in rhss]
+
+        # NB: This function will only be called with a string of operators of
+        # the same precedence. The ``test_operator_associativity_table_sanity``
+        # test in ``tests/test_parser.py`` verifies that in this case, all
+        # operators have the same associativity.
+        associativity = OPERATOR_ASSOCIATIVITY_TABLE[ops[0]]
+
+        if associativity == Associativity.left:
+            lhs = values[0]
+            for op, rhs in zip(ops, values[1:]):
+                lhs = BinaryExpr(lhs, op, rhs)
+            return lhs
+        elif associativity == Associativity.right:
+            rhs = values[-1]
+            for op, lhs in zip(reversed(ops), reversed(values[:-1])):
+                rhs = BinaryExpr(lhs, op, rhs)
+            return rhs
+        else:
+            raise TypeError(associativity)  # Unreachable
 
     maybe_log_or_expr = binary_expr
     maybe_log_and_expr = binary_expr
@@ -479,6 +480,7 @@ class ToAST(ParseTreeTransformer):
     maybe_shift_expr = binary_expr
     maybe_arith_expr = binary_expr
     maybe_prod_expr = binary_expr
+    maybe_pow_expr = binary_expr
 
     def maybe_peren_expr(self, parse_tree: Alt, children: Any) -> Expr:
         if parse_tree.choice_index == 0:  # Perentheses

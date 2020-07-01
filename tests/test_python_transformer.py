@@ -7,15 +7,19 @@ import _ast
 
 from textwrap import dedent
 
+from vc2_pseudocode.operators import (
+    BinaryOp,
+    UnaryOp,
+    Associativity,
+)
+
 from vc2_pseudocode.ast import (
     Listing,
     Function,
     ReturnStmt,
     Expr,
     PerenExpr,
-    UnaryOp,
     UnaryExpr,
-    BinaryOp,
     BinaryExpr,
     NumberExpr,
     FunctionCallExpr,
@@ -27,9 +31,9 @@ from vc2_pseudocode.parser import parse
 
 from vc2_pseudocode.python_transformer import (
     UndefinedArrayOrMapError,
-    InvalidPowArgumentsError,
     VariableCalledAsFunctionError,
     PYTHON_OPERATOR_PRECEDENCE_TABLE,
+    PYTHON_OPERATOR_ASSOCIATIVITY_TABLE,
     expr_add_one,
     PythonTransformer,
     pseudocode_to_python,
@@ -38,6 +42,26 @@ from vc2_pseudocode.python_transformer import (
 
 def test_binary_op_precedence_table_completeness() -> None:
     assert set(PYTHON_OPERATOR_PRECEDENCE_TABLE) == set(BinaryOp) | set(UnaryOp)
+
+
+def test_operator_associativity_table_completeness() -> None:
+    assert set(PYTHON_OPERATOR_ASSOCIATIVITY_TABLE) == set(BinaryOp) | set(UnaryOp)
+
+
+def test_operator_associativity_table_sanity() -> None:
+    # For sanity, all unary ops must be right-associative
+    for uo in UnaryOp:
+        assert PYTHON_OPERATOR_ASSOCIATIVITY_TABLE[uo] == Associativity.right
+
+    # All operators with the same associativity must have same precedence (the
+    # binary_expr method in the AST generator relies on this property).
+    for op, score in PYTHON_OPERATOR_PRECEDENCE_TABLE.items():
+        for other_op, other_score in PYTHON_OPERATOR_PRECEDENCE_TABLE.items():
+            if score == other_score:
+                assert (
+                    PYTHON_OPERATOR_ASSOCIATIVITY_TABLE[op]
+                    == PYTHON_OPERATOR_ASSOCIATIVITY_TABLE[other_op]
+                )
 
 
 class TestExprAddOne:
@@ -437,27 +461,15 @@ class TestExprAddOne:
                 bar(a + ~b & c != 0 or 1)
             """,
         ),
-        # Exponentiation
+        # Unary operator followed by exponentiation gets perens
         (
             """
-            foo(a, b, c):
-                return pow(a, b)
-                return pow(a + b, c)
-                return pow(a, b + c)
-                return pow(-a, b)
-                return pow(a, -b)
-                return -pow(a, b)
-                return pow(a, b) + pow(b, c)
+            foo(a, b):
+                return - a ** b
             """,
             """
-            def foo(a, b, c):
-                return a ** b
-                return (a + b) ** c
-                return a ** (b + c)
-                return (-a) ** b
-                return a ** (-b)
+            def foo(a, b):
                 return -(a ** b)
-                return a ** b + b ** c
             """,
         ),
         # Variable expression
@@ -860,58 +872,6 @@ def test_undefined_array_or_map(pseudocode: str, exp_error: str) -> None:
     assert str(exc_info.value) == dedent(exp_error).strip()
 
 
-@pytest.mark.parametrize(
-    "pseudocode, exp_error",
-    [
-        # Too-few arguments
-        (
-            """
-            foo():
-                return pow()
-            """,
-            """
-            At line 2 column 12:
-                    return pow()
-                           ^
-            The pow function expects exactly two arguments.
-            """,
-        ),
-        (
-            """
-            foo():
-                return pow(1)
-            """,
-            """
-            At line 2 column 12:
-                    return pow(1)
-                           ^
-            The pow function expects exactly two arguments.
-            """,
-        ),
-        # Too many arguments
-        (
-            """
-            foo():
-                return pow(1, 2, 3)
-            """,
-            """
-            At line 2 column 12:
-                    return pow(1, 2, 3)
-                           ^
-            The pow function expects exactly two arguments.
-            """,
-        ),
-    ],
-)
-def test_invalid_pow_arguments(pseudocode: str, exp_error: str) -> None:
-    pseudocode = dedent(pseudocode).strip()
-    listing = parse(pseudocode)
-    transformer = PythonTransformer(pseudocode)
-    with pytest.raises(InvalidPowArgumentsError) as exc_info:
-        transformer.transform(listing)
-    assert str(exc_info.value) == dedent(exp_error).strip()
-
-
 def test_variable_called_as_function() -> None:
     pseudocode = "foo(bar): bar()"
     listing = parse(pseudocode)
@@ -1076,10 +1036,6 @@ def pseudocode_to_bracketed(expr: Expr) -> str:
         op = expr.op.value
         rhs = pseudocode_to_bracketed(expr.rhs)
         return f"({lhs} {op} {rhs})"
-    elif isinstance(expr, FunctionCallExpr):
-        assert expr.name == "pow"
-        lhs, rhs = map(pseudocode_to_bracketed, expr.arguments)
-        return f"({lhs} ** {rhs})"
     elif isinstance(expr, VariableExpr):
         assert isinstance(expr.variable, Variable)
         return expr.variable.name
@@ -1092,7 +1048,7 @@ def pseudocode_to_bracketed(expr: Expr) -> str:
     (
         # Check associativity of unary operations
         [f"{op.value} {op.value} a" for op in UnaryOp]
-        # Check precedence of unary-vs-pow/binary operations
+        # Check precedence of unary-vs-binary operations
         + [f"{uo.value} a {bo.value} b" for uo in UnaryOp for bo in BinaryOp]
         + [
             f"a {bo.value} {uo.value} b"
@@ -1102,19 +1058,10 @@ def pseudocode_to_bracketed(expr: Expr) -> str:
             # in Python!)
             if uo != UnaryOp.logical_not
         ]
-        + [f"pow({uo.value} a, {uo.value} b)" for uo in UnaryOp]
-        + [f"{uo.value} pow(a, b)" for uo in UnaryOp]
-        # Check precedence of binary operations
+        # Check precedence and associativity of binary operations
         + [f"a {ao.value} b {bo.value} c" for ao in BinaryOp for bo in BinaryOp]
         + [f"(a {ao.value} b) {bo.value} c" for ao in BinaryOp for bo in BinaryOp]
         + [f"a {ao.value} (b {bo.value} c)" for ao in BinaryOp for bo in BinaryOp]
-        # Check precedence of pow-vs-binary operations
-        + [f"pow(a, b {op.value} c)" for op in BinaryOp]
-        + [f"pow(a {op.value} b, c)" for op in BinaryOp]
-        + [f"pow(a, b) {op.value} c" for op in BinaryOp]
-        + [f"a {op.value} pow(b, c)" for op in BinaryOp]
-        # Check correct output associativity of power function
-        + ["pow(pow(a, b), c)", "pow(a, pow(b, c))"]
     ),
 )
 def test_operator_precedence(expr_string: str) -> None:
@@ -1142,6 +1089,9 @@ def test_operator_precedence(expr_string: str) -> None:
     python_expr = python.split("\n")[-1].partition("return ")[2]
     python_ast = ast.parse(python_expr, mode="eval")
     python_bracketed = PythonToBracketed().visit(python_ast)
+
+    print(pseudocode)
+    print(python)
 
     assert python_bracketed == pseudocode_bracketed
 

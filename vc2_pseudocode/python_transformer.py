@@ -5,7 +5,6 @@ In general, the translation between pseudocode and Python is 'obvious'. The
 exceptions are as follows:
 
 * Labels in in the pseudocode are translated into equivalent strings in Python.
-* Calls to ``pow(a, b)`` are replaced with ``a ** b``.
 
 The :py:func:`pseudocode_to_python` utility function may be used to directly
 translate pseudocode into Python. Alternatively, the lower-level
@@ -20,7 +19,11 @@ from contextlib import contextmanager
 
 from dataclasses import dataclass
 
+from itertools import chain
+
 from vc2_pseudocode.parser import parse
+
+from vc2_pseudocode.operators import BinaryOp, UnaryOp, Associativity
 
 from peggie.error_message_generation import (
     offset_to_line_and_column,
@@ -44,9 +47,7 @@ from vc2_pseudocode.ast import (
     Expr,
     FunctionCallExpr,
     PerenExpr,
-    UnaryOp,
     UnaryExpr,
-    BinaryOp,
     BinaryExpr,
     VariableExpr,
     Variable,
@@ -96,25 +97,6 @@ class UndefinedArrayOrMapError(PythonTransformationError):
 
 
 @dataclass
-class InvalidPowArgumentsError(PythonTransformationError):
-    @classmethod
-    def from_function_call_expr(
-        cls, source: str, call: FunctionCallExpr
-    ) -> "InvalidPowArgumentsError":
-        """
-        Create an :py:class:`InvalidPowArgumentsError` for the function call
-        provided.
-        """
-        line, column = offset_to_line_and_column(source, call.offset)
-        snippet = extract_line(source, line)
-        return cls(line, column, snippet)
-
-    @property
-    def explanation(self) -> str:
-        return "The pow function expects exactly two arguments."
-
-
-@dataclass
 class VariableCalledAsFunctionError(PythonTransformationError):
     function_name: str
 
@@ -141,6 +123,7 @@ PYTHON_OPERATOR_PRECEDENCE_TABLE: Mapping[Union[BinaryOp, UnaryOp], int] = {
         reversed(
             [
                 # Shown in high-to-low order
+                [BinaryOp(o) for o in ["**"]],
                 [UnaryOp(o) for o in ["+", "-", "!"]],
                 [BinaryOp(o) for o in ["*", "//", "%"]],
                 [BinaryOp(o) for o in ["+", "-"]],
@@ -161,6 +144,17 @@ PYTHON_OPERATOR_PRECEDENCE_TABLE: Mapping[Union[BinaryOp, UnaryOp], int] = {
 Lookup giving a precedence score for each operator. A higher score means
 higher precedence.
 """
+
+PYTHON_OPERATOR_ASSOCIATIVITY_TABLE: Mapping[
+    Union[BinaryOp, UnaryOp], Associativity
+] = dict(
+    chain(
+        [(op, Associativity.left) for op in BinaryOp if op != BinaryOp("**")],
+        [(BinaryOp("**"), Associativity.right)],
+        [(op, Associativity.right) for op in UnaryOp],
+    )
+)
+"""Lookup giving operator associativity for each operator."""
 
 
 def expr_add_one(expr: Expr) -> Expr:
@@ -197,11 +191,6 @@ def expr_add_one(expr: Expr) -> Expr:
             )
     else:
         return BinaryExpr(expr, BinaryOp("+"), NumberExpr(expr.offset, expr.offset, 1))
-
-
-def is_pow(expr: Expr) -> bool:
-    """Check if the provided expression is a call to the pow function."""
-    return isinstance(expr, FunctionCallExpr) and expr.name == "pow"
 
 
 class PythonTransformer:
@@ -533,14 +522,14 @@ class PythonTransformer:
         op = expr.op.value if expr.op != UnaryOp("!") else "~"
         space = " " if op == "not" else ""
         value = self._transform_expr(expr.value)
-        if (
-            isinstance(expr.value, (BinaryExpr, UnaryExpr))
-            and PYTHON_OPERATOR_PRECEDENCE_TABLE[expr.value.op]
+        if isinstance(expr.value, (BinaryExpr, UnaryExpr)) and (
+            PYTHON_OPERATOR_PRECEDENCE_TABLE[expr.value.op]
             < PYTHON_OPERATOR_PRECEDENCE_TABLE[expr.op]
-        ) or is_pow(expr.value):
-            # We also add brackets for exponentiation (pow/**), even though **
-            # has higher precedence all other operators and therefore this
-            # isn't required. This is a standard Python convention which aids
+            or expr.value.op == BinaryOp.pow
+        ):
+            # We also add brackets for exponentiation (**), even though it has
+            # higher precedence all other operators and therefore this isn't
+            # required. This is a standard Python convention which aids
             # readability.
             return f"{op}{space}({value})"
         else:
@@ -548,32 +537,37 @@ class PythonTransformer:
 
     def _transform_binary_expr(self, expr: BinaryExpr) -> str:
         lhs = self._transform_expr(expr.lhs)
-        op = expr.op.value
+        op = expr.op
+        associativity = PYTHON_OPERATOR_ASSOCIATIVITY_TABLE[op]
         rhs = self._transform_expr(expr.rhs)
 
         # Decide perentheses for LHS
-        #
-        # Python's binary operators are left-associative so when LHS tree has
-        # same operator precedence, no brackets are required to achieve same
-        # grouping.
-        if isinstance(expr.lhs, (BinaryExpr, UnaryExpr)) and (
-            PYTHON_OPERATOR_PRECEDENCE_TABLE[expr.lhs.op]
-            < PYTHON_OPERATOR_PRECEDENCE_TABLE[expr.op]
-        ):
-            lhs = f"({lhs})"
+        if isinstance(expr.lhs, (BinaryExpr, UnaryExpr)):
+            if associativity == Associativity.left and (
+                PYTHON_OPERATOR_PRECEDENCE_TABLE[expr.lhs.op]
+                < PYTHON_OPERATOR_PRECEDENCE_TABLE[expr.op]
+            ):
+                lhs = f"({lhs})"
+            elif associativity == Associativity.right and (
+                PYTHON_OPERATOR_PRECEDENCE_TABLE[expr.lhs.op]
+                <= PYTHON_OPERATOR_PRECEDENCE_TABLE[expr.op]
+            ):
+                lhs = f"({lhs})"
 
         # Decide perentheses for RHS
-        #
-        # Python's binary operators are left-associative so when RHS tree has
-        # same operator precedence, brackets *are* required to achieve same
-        # grouping.
-        if isinstance(expr.rhs, (BinaryExpr, UnaryExpr)) and (
-            PYTHON_OPERATOR_PRECEDENCE_TABLE[expr.rhs.op]
-            <= PYTHON_OPERATOR_PRECEDENCE_TABLE[expr.op]
-        ):
-            rhs = f"({rhs})"
+        if isinstance(expr.rhs, (BinaryExpr, UnaryExpr)):
+            if associativity == Associativity.left and (
+                PYTHON_OPERATOR_PRECEDENCE_TABLE[expr.rhs.op]
+                <= PYTHON_OPERATOR_PRECEDENCE_TABLE[expr.op]
+            ):
+                rhs = f"({rhs})"
+            elif associativity == Associativity.right and (
+                PYTHON_OPERATOR_PRECEDENCE_TABLE[expr.rhs.op]
+                < PYTHON_OPERATOR_PRECEDENCE_TABLE[expr.op]
+            ):
+                rhs = f"({rhs})"
 
-        return f"{lhs} {op} {rhs}"
+        return f"{lhs} {op.value} {rhs}"
 
     def _transform_function_call_expr(self, expr: FunctionCallExpr) -> str:
         name = expr.name
@@ -583,31 +577,8 @@ class PythonTransformer:
                 self._source, expr
             )
 
-        if name == "pow":
-            # Special case, transform pow function into Python's exponentiation
-            # operator
-            if len(expr.arguments) != 2:
-                raise InvalidPowArgumentsError.from_function_call_expr(
-                    self._source, expr
-                )
-            lhs_expr, rhs_expr = expr.arguments
-
-            # In Python, exponentiation has higher precedence than unary and
-            # binary operators so we must wrap the LHS/RHS in brackets if they
-            # contain a binary/unary op to ensure they remain grouped correctly.
-            if isinstance(lhs_expr, (UnaryExpr, BinaryExpr)) or is_pow(lhs_expr):
-                lhs = f"({self._transform_expr(lhs_expr)})"
-            else:
-                lhs = self._transform_expr(lhs_expr)
-            if isinstance(rhs_expr, (UnaryExpr, BinaryExpr)) or is_pow(rhs_expr):
-                rhs = f"({self._transform_expr(rhs_expr)})"
-            else:
-                rhs = self._transform_expr(rhs_expr)
-
-            return f"{lhs} ** {rhs}"
-        else:
-            args = ", ".join(self._transform_expr(a) for a in expr.arguments)
-            return f"{name}({args})"
+        args = ", ".join(self._transform_expr(a) for a in expr.arguments)
+        return f"{name}({args})"
 
     def _transform_variable_expr(self, expr: VariableExpr) -> str:
         if self._is_name_in_scope(expr.variable.name):
