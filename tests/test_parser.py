@@ -16,6 +16,7 @@ from vc2_pseudocode.parser import parse, PseudocodeParseError
 from vc2_pseudocode.operators import (
     BinaryOp,
     UnaryOp,
+    AssignmentOp,
     OPERATOR_PRECEDENCE_TABLE,
     OPERATOR_ASSOCIATIVITY_TABLE,
     Associativity,
@@ -38,7 +39,6 @@ from vc2_pseudocode.ast import (
     WhileStmt,
     NumberExpr,
     AssignmentStmt,
-    AssignmentOp,
     ReturnStmt,
     UnaryExpr,
     BinaryExpr,

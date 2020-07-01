@@ -79,3 +79,16 @@ OPERATOR_ASSOCIATIVITY_TABLE: Mapping[Union[BinaryOp, UnaryOp], Associativity] =
     )
 )
 """Operator associativities."""
+
+
+class AssignmentOp(Enum):
+    assign = "="
+    add_assign = "+="
+    sub_assign = "-="
+    mul_assign = "*="
+    idiv_assign = "//="
+    and_assign = "&="
+    xor_assign = "^="
+    or_assign = "|="
+    lsh_assign = "<<="
+    rsh_assign = ">>="

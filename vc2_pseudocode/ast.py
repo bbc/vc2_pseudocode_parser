@@ -11,11 +11,10 @@ from peggie.parser import ParseTree, Alt, Regex
 from vc2_pseudocode.operators import (
     BinaryOp,
     UnaryOp,
+    AssignmentOp,
     OPERATOR_ASSOCIATIVITY_TABLE,
     Associativity,
 )
-
-from enum import Enum
 
 from dataclasses import dataclass, field
 
@@ -140,19 +139,6 @@ class ReturnStmt(Stmt):
 
     def __post_init__(self) -> None:
         self.offset_end = self.value.offset_end
-
-
-class AssignmentOp(Enum):
-    assign = "="
-    add_assign = "+="
-    sub_assign = "-="
-    mul_assign = "*="
-    idiv_assign = "//="
-    and_assign = "&="
-    xor_assign = "^="
-    or_assign = "|="
-    lsh_assign = "<<="
-    rsh_assign = ">>="
 
 
 @dataclass
