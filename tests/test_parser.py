@@ -43,42 +43,51 @@ from vc2_pseudocode.ast import (
     UnaryExpr,
     BinaryExpr,
     EmptyMapExpr,
+    EmptyLine,
     Comment,
+    EOL,
 )
 
 
 @pytest.mark.parametrize(
-    "string, exp_function_offsets",
+    "string, exp_leading_empty_line_offsets, exp_function_offsets",
     [
         # Empty string should fail
-        ("", []),
+        ("", [], []),
         # Whitespace only should fail
-        (" ", []),
-        ("  ", []),
-        (" \t \n \r", []),
+        (" ", [], []),
+        ("  ", [], []),
+        (" \t \n \r", [], []),
         # Non-function nonsense should fail
-        ("foobar", []),
+        ("foobar", [], []),
         # One-liner function (no whitespace) should be OK
-        ("foobar(): a()", [0]),
+        ("foobar(): a()", [], [0]),
         # Whitespace around function should be OK
-        (" foobar(): a() ", [1]),
-        ("\n  \nfoobar(): a() \n \n ", [4]),
+        (" foobar(): a() ", [], [1]),
+        ("\n  \nfoobar(): a() \n \n ", [0, 1], [4]),
         # Multiple functions should be OK
-        ("foobar(): a()\nfoobar(): a()", [0, 14]),
+        ("foobar(): a()\nfoobar(): a()", [], [0, 14]),
         # Empty lines' indentations should be ignored
-        ("    \nfoobar(): a()\nfoobar(): a()", [5, 19]),
-        ("foobar(): a()\n    \nfoobar(): a()", [0, 19]),
-        ("foobar(): a()\nfoobar(): a()\n    ", [0, 14]),
+        ("    \nfoobar(): a()\nfoobar(): a()", [0], [5, 19]),
+        ("foobar(): a()\n    \nfoobar(): a()", [], [0, 19]),
+        ("foobar(): a()\nfoobar(): a()\n    ", [], [0, 14]),
         # Indent must be same for functions
-        ("  foobar(): a()\n  foobar(): a()", [2, 18]),
-        ("  foobar(): a()\n   foobar(): a()", []),
-        ("   foobar(): a()\n  foobar(): a()", []),
+        ("  foobar(): a()\n  foobar(): a()", [], [2, 18]),
+        ("  foobar(): a()\n   foobar(): a()", [], []),
+        ("   foobar(): a()\n  foobar(): a()", [], []),
     ],
 )
-def test_listing(string: str, exp_function_offsets: List[int]) -> None:
+def test_listing(
+    string: str,
+    exp_leading_empty_line_offsets: List[int],
+    exp_function_offsets: List[int],
+) -> None:
     if exp_function_offsets:
         ast = parse(string)
         assert [f.offset for f in ast.functions] == exp_function_offsets
+        assert [
+            l.offset for l in ast.leading_empty_lines
+        ] == exp_leading_empty_line_offsets
     else:
         with pytest.raises(PseudocodeParseError):
             parse(string)
@@ -171,8 +180,57 @@ def test_equal_ignoring_offsets(a: ASTNode, b: ASTNode, exp_equal: bool) -> None
     assert equal_ignoring_offsets(a, b) is exp_equal
 
 
+def equal_ignoring_offsets_and_eol(a: Any, b: Any) -> bool:
+    def remove_offset(x: Any) -> Any:
+        if isinstance(x, dict):
+            return {
+                k: remove_offset(v)
+                for k, v in x.items()
+                if (k != "offset" and k != "offset_end" and k != "eol")
+            }
+        elif isinstance(x, list):
+            return [remove_offset(v) for v in x]
+        elif isinstance(x, tuple):
+            return tuple(remove_offset(v) for v in x)
+        else:
+            return x
+
+    return bool(remove_offset(asdict(a)) == remove_offset(asdict(b)))
+
+
+@pytest.mark.parametrize(
+    "a, b, exp_equal",
+    [
+        # Actually equal
+        (Variable(0, "foo"), Variable(0, "foo"), True),
+        # Equal appart from offset
+        (Variable(0, "foo"), Variable(1, "foo"), True),
+        # Equal appart from eol
+        (
+            ReturnStmt(0, NumberExpr(0, 3, 123), EOL(0, 0)),
+            ReturnStmt(0, NumberExpr(0, 3, 123), EOL(0, 0, Comment(0, "Hello"))),
+            True,
+        ),
+        # Different values
+        (Variable(0, "foo"), Variable(0, "bar"), False),
+        (Variable(0, "foo"), Variable(1, "bar"), False),
+        # Different types
+        (Variable(0, "foo"), VariableExpr(Variable(0, "foo")), False),
+        # Nesting
+        (VariableExpr(Variable(0, "foo")), VariableExpr(Variable(0, "foo")), True),
+        (VariableExpr(Variable(0, "foo")), VariableExpr(Variable(1, "foo")), True),
+        (VariableExpr(Variable(0, "foo")), VariableExpr(Variable(0, "bar")), False),
+        (VariableExpr(Variable(0, "foo")), VariableExpr(Variable(1, "bar")), False),
+    ],
+)
+def test_equal_ignoring_offsets_and_eol(
+    a: ASTNode, b: ASTNode, exp_equal: bool
+) -> None:
+    assert equal_ignoring_offsets_and_eol(a, b) is exp_equal
+
+
 def fcs(name: str) -> FunctionCallStmt:
-    return FunctionCallStmt(FunctionCallExpr(0, 0, name, []))
+    return FunctionCallStmt(FunctionCallExpr(0, 0, name, []), EOL(0, 0))
 
 
 @pytest.mark.parametrize(
@@ -294,7 +352,7 @@ def test_if_else_block(string: str, exp_if_else_stmt: Optional[IfElseStmt]) -> N
         (if_else_stmt,) = function.body
         assert isinstance(if_else_stmt, IfElseStmt)
 
-        assert equal_ignoring_offsets(if_else_stmt, exp_if_else_stmt)
+        assert equal_ignoring_offsets_and_eol(if_else_stmt, exp_if_else_stmt)
 
         # Sanity check ofsets
         assert if_else_stmt.offset == 11
@@ -358,7 +416,7 @@ def test_for_each_stmt(
         ] == exp_values
 
         assert len(for_each_stmt.body) == 1
-        assert equal_ignoring_offsets(for_each_stmt.body[0], fcs("a"))
+        assert equal_ignoring_offsets_and_eol(for_each_stmt.body[0], fcs("a"))
     else:
         with pytest.raises(PseudocodeParseError):
             parse(string)
@@ -399,7 +457,7 @@ def test_for_stmt(
         assert cast(NumberExpr, for_stmt.end).value == exp_end
 
         assert len(for_stmt.body) == 1
-        assert equal_ignoring_offsets(for_stmt.body[0], fcs("a"))
+        assert equal_ignoring_offsets_and_eol(for_stmt.body[0], fcs("a"))
     else:
         with pytest.raises(PseudocodeParseError):
             parse(string)
@@ -432,10 +490,10 @@ def test_while_stmt(string: str, exp_condition: Optional[Expr]) -> None:
         assert isinstance(for_stmt, WhileStmt)
         assert for_stmt.offset == 11
 
-        assert equal_ignoring_offsets(for_stmt.condition, exp_condition)
+        assert equal_ignoring_offsets_and_eol(for_stmt.condition, exp_condition)
 
         assert len(for_stmt.body) == 1
-        assert equal_ignoring_offsets(for_stmt.body[0], fcs("a"))
+        assert equal_ignoring_offsets_and_eol(for_stmt.body[0], fcs("a"))
     else:
         with pytest.raises(PseudocodeParseError):
             parse(string)
@@ -456,9 +514,9 @@ def test_function_call_stmt() -> None:
     "string, exp_stmt",
     [
         # Normal usage
-        ("return True", ReturnStmt(0, BooleanExpr(0, True))),
+        ("return True", ReturnStmt(0, BooleanExpr(0, True), EOL(0, 0))),
         # Extra space
-        ("return   True", ReturnStmt(0, BooleanExpr(0, True))),
+        ("return   True", ReturnStmt(0, BooleanExpr(0, True), EOL(0, 0))),
         # Too little space
         ("returnTrue", None),
         # No value
@@ -474,7 +532,7 @@ def test_return_stmt(string: str, exp_stmt: Optional[ReturnStmt]) -> None:
         (function,) = ast.functions
         (return_stmt,) = function.body
         assert return_stmt.offset == 7
-        assert equal_ignoring_offsets(return_stmt, exp_stmt)
+        assert equal_ignoring_offsets_and_eol(return_stmt, exp_stmt)
     else:
         with pytest.raises(PseudocodeParseError):
             parse(string)
@@ -499,9 +557,11 @@ def test_assignment_statement(
     assert isinstance(assignment_stmt, AssignmentStmt)
     assert assignment_stmt.offset == 7
 
-    assert equal_ignoring_offsets(assignment_stmt.variable, exp_lhs)
+    assert equal_ignoring_offsets_and_eol(assignment_stmt.variable, exp_lhs)
     assert assignment_stmt.op == op
-    assert equal_ignoring_offsets(assignment_stmt.value, VariableExpr(Variable(0, "b")))
+    assert equal_ignoring_offsets_and_eol(
+        assignment_stmt.value, VariableExpr(Variable(0, "b"))
+    )
 
 
 def parse_expr(string: str) -> Expr:
@@ -517,7 +577,7 @@ def test_unary_expr(spacing: str, op: UnaryOp) -> None:
     expr = parse_expr("{}{} foo".format(op.value, spacing))
     assert isinstance(expr, UnaryExpr)
 
-    assert equal_ignoring_offsets(
+    assert equal_ignoring_offsets_and_eol(
         expr, UnaryExpr(0, op, VariableExpr(Variable(0, "foo"))),
     )
 
@@ -532,7 +592,7 @@ def test_binary_expr(spacing: str, op: BinaryOp) -> None:
     expr = parse_expr("foo{}{}{}bar".format(spacing, op.value, spacing))
     assert isinstance(expr, BinaryExpr)
 
-    assert equal_ignoring_offsets(
+    assert equal_ignoring_offsets_and_eol(
         expr,
         BinaryExpr(
             VariableExpr(Variable(0, "foo")), op, VariableExpr(Variable(0, "bar")),
@@ -576,7 +636,7 @@ def test_binary_operators(op: BinaryOp) -> None:
         for op1, op2 in [(op, other_op), (other_op, op)]:
             expr = parse_expr(f"a {op1.value} b {op2.value} c")
             if associativity == Associativity.left:
-                assert equal_ignoring_offsets(
+                assert equal_ignoring_offsets_and_eol(
                     expr,
                     BinaryExpr(
                         BinaryExpr(
@@ -589,7 +649,7 @@ def test_binary_operators(op: BinaryOp) -> None:
                     ),
                 )
             elif associativity == Associativity.right:
-                assert equal_ignoring_offsets(
+                assert equal_ignoring_offsets_and_eol(
                     expr,
                     BinaryExpr(
                         VariableExpr(Variable(0, "a")),
@@ -612,7 +672,7 @@ def test_binary_operators(op: BinaryOp) -> None:
         if other_score < score and isinstance(other_op, BinaryOp)
     ]:
         expr = parse_expr(f"a {op.value} b {other_op.value} c")
-        assert equal_ignoring_offsets(
+        assert equal_ignoring_offsets_and_eol(
             expr,
             BinaryExpr(
                 BinaryExpr(
@@ -624,7 +684,7 @@ def test_binary_operators(op: BinaryOp) -> None:
         )
 
         expr = parse_expr(f"a {other_op.value} b {op.value} c")
-        assert equal_ignoring_offsets(
+        assert equal_ignoring_offsets_and_eol(
             expr,
             BinaryExpr(
                 VariableExpr(Variable(0, "a")),
@@ -643,7 +703,7 @@ def test_binary_operators(op: BinaryOp) -> None:
         if other_score < score and isinstance(other_op, UnaryOp)
     ]:
         expr = parse_expr(f"{other_op.value} a {op.value} b")
-        assert equal_ignoring_offsets(
+        assert equal_ignoring_offsets_and_eol(
             expr,
             UnaryExpr(
                 0,
@@ -662,7 +722,7 @@ def test_binary_operators(op: BinaryOp) -> None:
                 parse_expr(f"a {op.value} {other_op.value} b")
         else:
             expr = parse_expr(f"a {op.value} {other_op.value} b")
-            assert equal_ignoring_offsets(
+            assert equal_ignoring_offsets_and_eol(
                 expr,
                 BinaryExpr(
                     VariableExpr(Variable(0, "a")),
@@ -687,7 +747,7 @@ def test_unary_operators(op: UnaryOp) -> None:
         assert isinstance(other_op, UnaryOp)
         for op1, op2 in [(op, other_op), (other_op, op)]:
             expr = parse_expr(f"{op1.value} {op2.value} a")
-            assert equal_ignoring_offsets(
+            assert equal_ignoring_offsets_and_eol(
                 expr,
                 UnaryExpr(0, op1, UnaryExpr(0, op2, VariableExpr(Variable(0, "a")),),),
             )
@@ -700,7 +760,7 @@ def test_unary_operators(op: UnaryOp) -> None:
         if other_score < score and isinstance(other_op, BinaryOp)
     ]:
         expr = parse_expr(f"{op.value} a {other_op.value} b")
-        assert equal_ignoring_offsets(
+        assert equal_ignoring_offsets_and_eol(
             expr,
             BinaryExpr(
                 UnaryExpr(0, op, VariableExpr(Variable(0, "a"))),
@@ -710,7 +770,7 @@ def test_unary_operators(op: UnaryOp) -> None:
         )
 
         expr = parse_expr(f"a {other_op.value} {op.value} b")
-        assert equal_ignoring_offsets(
+        assert equal_ignoring_offsets_and_eol(
             expr,
             BinaryExpr(
                 VariableExpr(Variable(0, "a")),
@@ -735,7 +795,7 @@ def test_unary_operators(op: UnaryOp) -> None:
                 parse_expr(f"{other_op.value} {op.value} a")
         else:
             expr = parse_expr(f"{other_op.value} {op.value} a")
-            assert equal_ignoring_offsets(
+            assert equal_ignoring_offsets_and_eol(
                 expr,
                 UnaryExpr(
                     0, other_op, UnaryExpr(0, op, VariableExpr(Variable(0, "a"))),
@@ -747,7 +807,7 @@ def test_unary_operators(op: UnaryOp) -> None:
                 parse_expr(f"{op.value} {other_op.value} a")
         else:
             expr = parse_expr(f"{op.value} {other_op.value} a")
-            assert equal_ignoring_offsets(
+            assert equal_ignoring_offsets_and_eol(
                 expr,
                 UnaryExpr(
                     0, op, UnaryExpr(0, other_op, VariableExpr(Variable(0, "a"))),
@@ -789,7 +849,7 @@ def test_function_call_expr(
 ) -> None:
     if exp_name is not None and exp_arguments is not None:
         expr = parse_expr(string)
-        assert equal_ignoring_offsets(
+        assert equal_ignoring_offsets_and_eol(
             expr, FunctionCallExpr(0, 0, exp_name, exp_arguments)
         )
     else:
@@ -836,7 +896,7 @@ def test_function_call_expr(
 def test_variable_expr(string: str, exp_variable_expr: Optional[VariableExpr]) -> None:
     if exp_variable_expr is not None:
         expr = parse_expr(string)
-        assert equal_ignoring_offsets(expr, exp_variable_expr)
+        assert equal_ignoring_offsets_and_eol(expr, exp_variable_expr)
     else:
         with pytest.raises(PseudocodeParseError):
             parse_expr(string)
@@ -946,43 +1006,76 @@ def test_number_expr(
 
 
 @pytest.mark.parametrize(
-    "string, exp_comments",
+    "string, exp_eol",
     [
-        # One-liner
-        ("foo(): return 1 # Hello there", [Comment(16, "# Hello there")]),
-        # One-liner no space
-        ("foo(): return 1# Hello there", [Comment(15, "# Hello there")]),
-        # Leading comment
-        ("# Hi\nfoo(): return 1", [Comment(0, "# Hi")]),
-        ("# Hi\r\nfoo(): return 1", [Comment(0, "# Hi")]),
-        ("# Hi\n\rfoo(): return 1", [Comment(0, "# Hi")]),
-        ("# Hi\nfoo(): return 1", [Comment(0, "# Hi")]),
-        # Indented leading comment
-        ("  # Hi\nfoo(): return 1", [Comment(2, "# Hi")]),
-        ("  # Hi\r\nfoo(): return 1", [Comment(2, "# Hi")]),
-        ("  # Hi\n\rfoo(): return 1", [Comment(2, "# Hi")]),
-        ("  # Hi\nfoo(): return 1", [Comment(2, "# Hi")]),
-        # Trailing comment
-        ("foo(): return 1\n# Hi", [Comment(16, "# Hi")]),
-        # Comment within block
-        ("foo():\n  # Hi\n  return 1", [Comment(9, "# Hi")]),
-        # Empty comment
-        ("foo(): return 1 #", [Comment(16, "#")]),
-        ("foo(): return 1 #\n", [Comment(16, "#")]),
-        # Multiple comments
+        # Nothing follows
+        ("foo(): return True", EOL(18, 18)),
+        ("foo(): return True\n", EOL(18, 19)),
+        ("foo(): return True\r", EOL(18, 19)),
+        ("foo(): return True\r\n", EOL(18, 20)),
+        # Comment
+        ("foo(): return True # Hello", EOL(18, 26, Comment(19, "# Hello"))),
+        ("foo(): return True # Hello\n", EOL(18, 26, Comment(19, "# Hello"))),
+        ("foo(): return True # Hello\r", EOL(18, 26, Comment(19, "# Hello"))),
+        ("foo(): return True # Hello\r\n", EOL(18, 26, Comment(19, "# Hello"))),
+        # Empty lines
+        ("foo(): return True\n\n", EOL(18, 20, None, [EmptyLine(19, 20)])),
+        ("foo(): return True\r\r", EOL(18, 20, None, [EmptyLine(19, 20)])),
+        ("foo(): return True\r\n\r\n", EOL(18, 22, None, [EmptyLine(20, 22)])),
+        # Multiple empty lines
         (
-            "# One\nfoo():\n  # Two\n  return 1\n# Three",
-            [Comment(0, "# One"), Comment(15, "# Two"), Comment(32, "# Three")],
+            "foo(): return True\n\n\n",
+            EOL(18, 21, None, [EmptyLine(19, 20), EmptyLine(20, 21)]),
+        ),
+        # Empty lines with comments
+        (
+            "foo(): return True # Foo\n# Bar\n  # Baz\n",
+            EOL(
+                18,
+                38,
+                Comment(19, "# Foo"),
+                [
+                    EmptyLine(25, 30, Comment(25, "# Bar")),
+                    EmptyLine(31, 38, Comment(33, "# Baz")),
+                ],
+            ),
+        ),
+        # Empty lines with comments and no final newline
+        (
+            "foo(): return True # Foo\n# Bar\n  # Baz",
+            EOL(
+                18,
+                38,
+                Comment(19, "# Foo"),
+                [
+                    EmptyLine(25, 30, Comment(25, "# Bar")),
+                    EmptyLine(31, 38, Comment(33, "# Baz")),
+                ],
+            ),
         ),
     ],
 )
-def test_comment_capture(string: str, exp_comments: Optional[List[Comment]]) -> None:
-    if exp_comments is not None:
-        listing = parse(string)
-        assert listing.comments == exp_comments
-    else:
-        with pytest.raises(PseudocodeParseError):
-            parse(string)
+def test_eol_and_any_ws_and_v_space_and_comment(string: str, exp_eol: EOL) -> None:
+    ast = parse(string)
+    (function,) = ast.functions
+    (return_stmt,) = function.body
+    assert isinstance(return_stmt, ReturnStmt)
+    assert return_stmt.eol == exp_eol
+
+
+@pytest.mark.parametrize(
+    "string, exp_eol",
+    [
+        # Inline form gets no EOL
+        ("foo(): return True", None),
+        # Newline form gets EOL (even if empty)
+        ("foo():\n  return True", EOL(6, 7)),
+    ],
+)
+def test_stmt_block_eol(string: str, exp_eol: Optional[EOL]) -> None:
+    ast = parse(string)
+    (fn,) = ast.functions
+    assert fn.eol == exp_eol
 
 
 @pytest.mark.parametrize(

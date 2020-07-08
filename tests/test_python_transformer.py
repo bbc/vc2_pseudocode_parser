@@ -25,6 +25,7 @@ from vc2_pseudocode.ast import (
     FunctionCallExpr,
     VariableExpr,
     Variable,
+    EOL,
 )
 
 from vc2_pseudocode.parser import parse
@@ -34,6 +35,8 @@ from vc2_pseudocode.python_transformer import (
     VariableCalledAsFunctionError,
     PYTHON_OPERATOR_PRECEDENCE_TABLE,
     PYTHON_OPERATOR_ASSOCIATIVITY_TABLE,
+    split_trailing_comments,
+    dedent_trailing_comments,
     expr_add_one,
     PythonTransformer,
     pseudocode_to_python,
@@ -62,6 +65,58 @@ def test_operator_associativity_table_sanity() -> None:
                     PYTHON_OPERATOR_ASSOCIATIVITY_TABLE[op]
                     == PYTHON_OPERATOR_ASSOCIATIVITY_TABLE[other_op]
                 )
+
+
+@pytest.mark.parametrize(
+    "block, exp_before, exp_after",
+    [
+        # Empty
+        ("", "", ""),
+        # No trailing newline/comments
+        ("foo", "foo", ""),
+        ("foo\nbar", "foo\nbar", ""),
+        ("foo\n# bar\nbaz", "foo\n# bar\nbaz", ""),
+        # Trailing newline is placed in 'after'
+        ("foo\n", "foo", "\n"),
+        ("foo\nbar\n", "foo\nbar", "\n"),
+        ("foo\n# bar\nbaz\n", "foo\n# bar\nbaz", "\n"),
+        # Multiple trailing newlines
+        ("foo\n\n", "foo", "\n\n"),
+        ("foo  \n  \n  ", "foo  ", "\n  \n  "),
+        # Trailing comments
+        ("foo\n# Foo", "foo", "\n# Foo"),
+        ("foo\n# Foo\n\n  # Bar", "foo", "\n# Foo\n\n  # Bar"),
+        # Only comments
+        ("# Foo", "", "# Foo"),
+        ("  # Foo", "", "  # Foo"),
+    ],
+)
+def test_split_trailing_comments(block: str, exp_before: str, exp_after: str) -> None:
+    assert split_trailing_comments(block) == (exp_before, exp_after)
+
+
+@pytest.mark.parametrize(
+    "block, exp",
+    [
+        # Empty
+        ("", ""),
+        # Single line (no trailing lines)
+        ("foo", "foo"),
+        ("foo\n", "foo\n"),
+        # Multiple lines (no trailing lines)
+        ("foo\nbar", "foo\nbar"),
+        ("foo\nbar\n", "foo\nbar\n"),
+        # Trailing whitespace only
+        ("foo\n\n\n", "foo\n\n\n"),
+        ("foo\n  \n  \n  ", "foo\n\n\n"),
+        # Trailing whitespace with comments
+        ("foo\n# What \n  # Are\n # You? ", "foo\n# What \n# Are\n# You? "),
+        # Comments within code not dedented
+        ("foo\n  # Hello\nbar\n", "foo\n  # Hello\nbar\n"),
+    ],
+)
+def test_dedent_trailing_comments(block: str, exp: str) -> None:
+    assert dedent_trailing_comments(block) == exp
 
 
 class TestExprAddOne:
@@ -564,6 +619,35 @@ class TestExprAddOne:
                 return 0
             """,
         ),
+        # Leading comments adjacent to function
+        (
+            """
+            # Leading comment adjacent to function
+            foo():
+                return 0
+            """,
+            """
+            # Leading comment adjacent to function
+            def foo():
+                return 0
+            """,
+        ),
+        # Leading comments spaced from function
+        (
+            """
+            # Leading comment spaced from function
+
+            foo():
+                return 0
+            """,
+            """
+            # Leading comment spaced from function
+
+
+            def foo():
+                return 0
+            """,
+        ),
         # Comments around functions
         (
             """
@@ -592,11 +676,11 @@ class TestExprAddOne:
                 if (True):  # And on an if
                     # And inside an if
                     foo()
-                    # And before an else if
+                # And before an else if
                 else if (True):  # And on an else if
                     # And inside an else if
                     foo()
-                    # And before an else
+                # And before an else
                 else:  # And on an else
                     # And inside an else
                     foo()
@@ -630,11 +714,11 @@ class TestExprAddOne:
 
                 if (True):
                     foo()
-                    # And spaced before an else if
+                # And spaced before an else if
 
                 else if (True):
                     foo()
-                    # And spaced before an else
+                # And spaced before an else
 
                 else:
                     foo()
@@ -716,11 +800,11 @@ class TestExprAddOne:
                 if True:  # And on an if
                     # And inside an if
                     foo()
-                    # And before an else if
+                # And before an else if
                 elif True:  # And on an else if
                     # And inside an else if
                     foo()
-                    # And before an else
+                # And before an else
                 else:  # And on an else
                     # And inside an else
                     foo()
@@ -755,11 +839,11 @@ class TestExprAddOne:
 
                 if True:
                     foo()
-                    # And spaced before an else if
+                # And spaced before an else if
 
                 elif True:
                     foo()
-                    # And spaced before an else
+                # And spaced before an else
 
                 else:
                     foo()
@@ -790,26 +874,26 @@ class TestExprAddOne:
                 return 0
 
 
-            def qac():  # Comment on one-liner function
-                return 0
+            def qac():
+                return 0  # Comment on one-liner function
 
 
             def qiz():
-                if True:  # Comment on one-liner if
-                    return 0
-                elif True:  # Comment on one-liner else if
-                    return 0
-                else:  # Comment on one-liner else
-                    return 0
+                if True:
+                    return 0  # Comment on one-liner if
+                elif True:
+                    return 0  # Comment on one-liner else if
+                else:
+                    return 0  # Comment on one-liner else
 
-                for x in [1, 2, 3]:  # Comment on one-liner for each
-                    foo()
+                for x in [1, 2, 3]:
+                    foo()  # Comment on one-liner for each
 
-                for x in range(1, 4):  # Comment on one-liner for
-                    foo()
+                for x in range(1, 4):
+                    foo()  # Comment on one-liner for
 
-                while False:  # Comment on one-liner while
-                    foo()
+                while False:
+                    foo()  # Comment on one-liner while
 
 
             # And at the end of a file
@@ -1111,6 +1195,7 @@ def test_generating_not_on_rhs_of_binary_op() -> None:
                                 0, UnaryOp("not"), VariableExpr(Variable(0, "b"))
                             ),
                         ),
+                        EOL(0, 0),
                     ),
                 ],
             ),

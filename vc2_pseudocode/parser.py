@@ -38,15 +38,15 @@ parse_error_default_expr_explanations: Mapping[
     RuleExpr("maybe_pow_expr"): "<expression>",
     RuleExpr("maybe_peren_expr"): "<expression>",
     # Optional whitespace
-    RuleExpr("WS"): None,
+    RuleExpr("ws"): None,
     # Mandatory vertical whitespace
     RuleExpr("comment"): "<newline>",
-    RuleExpr("V_SPACE"): "<newline>",
-    RuleExpr("EOL"): "<newline>",
-    RuleExpr("EOF"): "<newline>",
+    RuleExpr("v_space"): "<newline>",
+    RuleExpr("eol"): "<newline>",
+    RuleExpr("eof"): "<newline>",
     # Mandatory horizontal whitespace
-    RuleExpr("WS_"): "<space>",
-    RuleExpr("H_SPACE"): "<space>",
+    RuleExpr("ws_"): "<space>",
+    RuleExpr("h_space"): "<space>",
     # Operators
     RegexExpr(re.compile(r"<<|>>", re.DOTALL)): "<operator>",
     RegexExpr(re.compile(r"==|!=|<=|>=|<|>", re.DOTALL)): "<operator>",
@@ -79,11 +79,11 @@ parse_error_default_expr_explanations: Mapping[
 parse_error_default_last_resort_exprs: Set[Union[RuleExpr, RegexExpr]] = {
     RuleExpr("single_line_stmt"),
     RuleExpr("comment"),
-    RuleExpr("WS_"),
-    RuleExpr("H_SPACE"),
-    RuleExpr("V_SPACE"),
-    RuleExpr("EOF"),
-    RuleExpr("EOL"),
+    RuleExpr("ws_"),
+    RuleExpr("h_space"),
+    RuleExpr("v_space"),
+    RuleExpr("eof"),
+    RuleExpr("eol"),
 }
 parse_error_default_just_indentation = False
 

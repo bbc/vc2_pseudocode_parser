@@ -6,7 +6,7 @@ from typing import List, Union, Optional, Any, cast, Tuple
 
 from peggie.transformer import ParseTreeTransformer
 
-from peggie.parser import ParseTree, Alt, Regex
+from peggie.parser import ParseTree, Alt, Regex, Lookahead
 
 from vc2_pseudocode.operators import (
     BinaryOp,
@@ -31,11 +31,31 @@ class Listing(ASTNode):
     offset: int = field(init=False, repr=False)
     offset_end: int = field(init=False, repr=False)
     functions: List["Function"]
-    comments: List["Comment"] = field(default_factory=list)
+    leading_empty_lines: List["EmptyLine"] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         self.offset = self.functions[0].offset
         self.offset_end = self.functions[-1].offset_end
+
+
+@dataclass
+class Comment(ASTNode):
+    offset_end: int = field(init=False, repr=False)
+    string: str
+
+    def __post_init__(self) -> None:
+        self.offset_end = self.offset + len(self.string)
+
+
+@dataclass
+class EmptyLine(ASTNode):
+    comment: Optional[Comment] = None
+
+
+@dataclass
+class EOL(ASTNode):
+    comment: Optional[Comment] = None
+    empty_lines: List[EmptyLine] = field(default_factory=list)
 
 
 @dataclass
@@ -44,6 +64,7 @@ class Function(ASTNode):
     name: str
     arguments: List["Variable"]
     body: List["Stmt"]
+    eol: Optional[EOL] = None
 
     def __post_init__(self) -> None:
         self.offset_end = self.body[-1].offset_end
@@ -74,6 +95,7 @@ class IfBranch(ASTNode):
     offset_end: int = field(init=False, repr=False)
     condition: "Expr"
     body: List[Stmt]
+    eol: Optional[EOL] = None
 
     def __post_init__(self) -> None:
         self.offset_end = self.body[-1].offset_end
@@ -83,6 +105,7 @@ class IfBranch(ASTNode):
 class ElseBranch(ASTNode):
     offset_end: int = field(init=False, repr=False)
     body: List[Stmt]
+    eol: Optional[EOL] = None
 
     def __post_init__(self) -> None:
         self.offset_end = self.body[-1].offset_end
@@ -94,6 +117,7 @@ class ForEachStmt(Stmt):
     variable: "Variable"
     values: List["Expr"]
     body: List[Stmt]
+    eol: Optional[EOL] = None
 
     def __post_init__(self) -> None:
         self.offset_end = self.body[-1].offset_end
@@ -106,6 +130,7 @@ class ForStmt(Stmt):
     start: "Expr"
     end: "Expr"
     body: List[Stmt]
+    eol: Optional[EOL] = None
 
     def __post_init__(self) -> None:
         self.offset_end = self.body[-1].offset_end
@@ -116,6 +141,7 @@ class WhileStmt(Stmt):
     offset_end: int = field(init=False, repr=False)
     condition: "Expr"
     body: List[Stmt]
+    eol: Optional[EOL] = None
 
     def __post_init__(self) -> None:
         self.offset_end = self.body[-1].offset_end
@@ -126,6 +152,7 @@ class FunctionCallStmt(Stmt):
     offset: int = field(init=False, repr=False)
     offset_end: int = field(init=False, repr=False)
     call: "FunctionCallExpr"
+    eol: EOL
 
     def __post_init__(self) -> None:
         self.offset = self.call.offset
@@ -136,6 +163,7 @@ class FunctionCallStmt(Stmt):
 class ReturnStmt(Stmt):
     offset_end: int = field(init=False, repr=False)
     value: "Expr"
+    eol: EOL
 
     def __post_init__(self) -> None:
         self.offset_end = self.value.offset_end
@@ -148,6 +176,7 @@ class AssignmentStmt(Stmt):
     variable: Union["Variable", "Subscript"]
     op: AssignmentOp
     value: "Expr"
+    eol: EOL
 
     def __post_init__(self) -> None:
         self.offset = self.variable.offset
@@ -248,15 +277,6 @@ class NumberExpr(Expr):
     display_digits: int = 1
 
 
-@dataclass
-class Comment(ASTNode):
-    offset_end: int = field(init=False, repr=False)
-    string: str
-
-    def __post_init__(self) -> None:
-        self.offset_end = self.offset + len(self.string)
-
-
 class ToAST(ParseTreeTransformer):
     """
     Transformer which transforms a :py:class:`ParseTree` resulting from parsing
@@ -264,33 +284,108 @@ class ToAST(ParseTreeTransformer):
     :py:class:`Listing`.
     """
 
-    _comments: List[Comment]
-
     def _transform_regex(self, regex: Regex) -> Regex:
         return regex
 
-    def start_enter(self, _pt: ParseTree) -> None:
-        self._comments = []
+    def _transform_lookahead(self, lookahead: Lookahead) -> Lookahead:
+        return lookahead
 
-    def comment(self, _pt: ParseTree, comment: Regex) -> Regex:
-        self._comments.append(Comment(comment.start, comment.string.rstrip("\r\n"),))
-        return comment
+    def comment(self, _pt: ParseTree, comment: Regex) -> Comment:
+        return Comment(comment.start, comment.string.rstrip("\r\n"))
+
+    def v_space(self, _pt: ParseTree, newline: Regex) -> EmptyLine:
+        return EmptyLine(newline.start, newline.end)
+
+    def any_ws(self, _pt: ParseTree, children: Any) -> List[EmptyLine]:
+        out: List[EmptyLine] = []
+        empty_line_offset: Optional[int] = None
+        for child in children:
+            if isinstance(child, Comment):  # comment
+                out.append(
+                    EmptyLine(
+                        empty_line_offset
+                        if empty_line_offset is not None
+                        else child.offset,
+                        child.offset_end,
+                        child,
+                    )
+                )
+                empty_line_offset = None
+            elif isinstance(child, EmptyLine):  # v_space
+                out.append(
+                    EmptyLine(
+                        empty_line_offset
+                        if empty_line_offset is not None
+                        else child.offset,
+                        child.offset_end,
+                    )
+                )
+                empty_line_offset = None
+            elif isinstance(child, Regex):  # h_space
+                if empty_line_offset is None:
+                    empty_line_offset = child.start
+
+        return out
+
+    def eol(self, _pt: ParseTree, children: Any) -> EOL:
+        h_space, comment_or_v_space_or_eof, any_ws = children
+
+        empty_lines = cast(List[EmptyLine], any_ws)
+
+        offset: int
+        if h_space is not None:
+            offset = h_space.start
+        elif isinstance(comment_or_v_space_or_eof, (Comment, EmptyLine)):
+            offset = comment_or_v_space_or_eof.offset
+        elif isinstance(comment_or_v_space_or_eof, Lookahead):  # i.e. EOF
+            offset = comment_or_v_space_or_eof.offset
+        else:
+            raise NotImplementedError()  # Unreachable
+
+        offset_end: int
+        if empty_lines:
+            offset_end = empty_lines[-1].offset_end
+        elif isinstance(comment_or_v_space_or_eof, Lookahead):  # i.e. EOF
+            offset_end = comment_or_v_space_or_eof.offset
+        elif isinstance(comment_or_v_space_or_eof, (Comment, EmptyLine)):
+            offset_end = comment_or_v_space_or_eof.offset_end
+        elif h_space is not None:
+            offset_end = h_space.end
+
+        comment: Optional[Comment]
+        if isinstance(comment_or_v_space_or_eof, Comment):
+            comment = comment_or_v_space_or_eof
+        else:
+            comment = None
+
+        return EOL(offset, offset_end, comment, empty_lines)
 
     def start(self, parse_tree: Alt, children: Any) -> Listing:
-        _ws1, functions_and_ws, _eof = children
+        any_ws, functions, _eof = children
 
-        return Listing(
-            [cast(Function, function) for function, _ws in functions_and_ws],
-            self._comments,
-        )
+        return Listing(cast(List[Function], functions), cast(List[EmptyLine], any_ws),)
+
+    def stmt_block(
+        self, parse_tree: Alt, children: Any
+    ) -> Tuple[Optional[EOL], List[Union[Stmt]]]:
+        if parse_tree.choice_index == 0:  # One-liner
+            _colon, _ws, stmt = children
+            return None, [cast(Stmt, stmt)]
+        elif parse_tree.choice_index == 1:  # Multi-line form
+            _colon, eol, body = children
+            return (cast(EOL, eol), cast(List[Stmt], body))
+        else:
+            raise TypeError(parse_tree.choice_index)  # Unreachable
 
     def function(self, _pt: ParseTree, children: Any) -> Function:
         name, _ws, arguments, _ws, body = children
+        eol, stmts = body
         return Function(
             name.start,
             cast(str, name.string),
             cast(List[Variable], arguments),
-            cast(List[Stmt], body),
+            cast(List[Stmt], stmts),
+            cast(Optional[EOL], eol),
         )
 
     def function_arguments(self, _pt: ParseTree, children: Any) -> List[Variable]:
@@ -306,41 +401,42 @@ class ToAST(ParseTreeTransformer):
 
         return [Variable(a.start, a.string) for a in arguments]
 
-    def stmt_block(self, parse_tree: Alt, children: Any) -> List[Stmt]:
-        if parse_tree.choice_index == 0:  # One-liner
-            _colon, _ws, stmt = children
-            return [cast(Stmt, stmt)]
-        elif parse_tree.choice_index == 1:  # Multi-line form
-            _colon, _eol, stmts = children
-            return cast(List[Stmt], stmts)
-        else:
-            raise TypeError(parse_tree.choice_index)  # Unreachable
-
     def if_else_stmt(self, _pt: ParseTree, children: Any) -> IfElseStmt:
         if_block, else_if_blocks, else_block = children
 
         if_branches = []
 
         if_, _ws1, condition, _ws2, body = if_block
+        eol, stmts = body
         if_branches.append(
             IfBranch(
-                cast(Regex, if_).start, cast(Expr, condition), cast(List[Stmt], body),
+                cast(Regex, if_).start,
+                cast(Expr, condition),
+                cast(List[Stmt], stmts),
+                cast(Optional[EOL], eol),
             )
         )
 
         for else_, _ws1, _if, _ws2, condition, _ws3, body in else_if_blocks:
+            eol, stmts = body
             if_branches.append(
                 IfBranch(
                     cast(Regex, else_).start,
                     cast(Expr, condition),
-                    cast(List[Stmt], body),
+                    cast(List[Stmt], stmts),
+                    cast(Optional[EOL], eol),
                 )
             )
 
         else_branch: Optional[ElseBranch] = None
         if else_block is not None:
             else_, _ws, body = else_block
-            else_branch = ElseBranch(cast(Regex, else_).start, cast(List[Stmt], body),)
+            eol, stmts = body
+            else_branch = ElseBranch(
+                cast(Regex, else_).start,
+                cast(List[Stmt], stmts),
+                cast(Optional[EOL], eol),
+            )
 
         return IfElseStmt(if_branches, else_branch)
 
@@ -358,11 +454,13 @@ class ToAST(ParseTreeTransformer):
             _ws5,
             body,
         ) = children
+        eol, stmts = body
         return ForEachStmt(
             for_.start,
             Variable(identifier.start, identifier.string),
             cast(List[Expr], values),
-            cast(List[Stmt], body),
+            cast(List[Stmt], stmts),
+            cast(Optional[EOL], eol),
         )
 
     def for_each_list(self, _pt: ParseTree, children: Any) -> List[Expr]:
@@ -386,32 +484,42 @@ class ToAST(ParseTreeTransformer):
             _ws6,
             body,
         ) = children
+        eol, stmts = body
         return ForStmt(
             for_.start,
             Variable(identifier.start, identifier.string),
             cast(Expr, start),
             cast(Expr, end),
-            cast(List[Stmt], body),
+            cast(List[Stmt], stmts),
+            cast(Optional[EOL], eol),
         )
 
     def while_stmt(self, _pt: ParseTree, children: Any) -> WhileStmt:
-        while_, _ws1, condition, _ws2, stmts = children
-        return WhileStmt(while_.start, cast(Expr, condition), cast(List[Stmt], stmts))
+        while_, _ws1, condition, _ws2, body = children
+        eol, stmts = body
+        return WhileStmt(
+            while_.start,
+            cast(Expr, condition),
+            cast(List[Stmt], stmts),
+            cast(Optional[EOL], eol),
+        )
 
     def function_call_stmt(self, _pt: ParseTree, children: Any) -> FunctionCallStmt:
-        function_call, _eol = children
-        return FunctionCallStmt(cast(FunctionCallExpr, function_call))
+        function_call, eol = children
+        return FunctionCallStmt(cast(FunctionCallExpr, function_call), cast(EOL, eol),)
 
     def return_stmt(self, _pt: ParseTree, children: Any) -> ReturnStmt:
-        return_, _ws, expr, _eol = children
-        return ReturnStmt(return_.start, cast(Expr, expr))
+        return_, _ws, expr, eol = children
+
+        return ReturnStmt(return_.start, cast(Expr, expr), cast(EOL, eol))
 
     def assignment_stmt(self, _pt: ParseTree, children: Any) -> AssignmentStmt:
-        variable, _ws1, op, _ws2, expr, _eol = children
+        variable, _ws1, op, _ws2, expr, eol = children
         return AssignmentStmt(
             cast(Union[Variable, Subscript], variable),
             AssignmentOp(op.string),
             cast(Expr, expr),
+            cast(EOL, eol),
         )
 
     def condition(self, _pt: ParseTree, children: Any) -> Expr:
