@@ -8,7 +8,7 @@ from typing import Optional, Mapping, Set, Union, cast
 from peggie.parser import Parser, ParseError, RuleExpr, RegexExpr
 
 from vc2_pseudocode.grammar import grammar
-from vc2_pseudocode.ast import ToAST, Listing
+from vc2_pseudocode.ast import ToAST, infer_labels, Listing
 
 import re
 
@@ -103,13 +103,20 @@ class PseudocodeParseError(ParseError):
 
 
 def parse(string: str) -> Listing:
+    """
+    Parse a pseudocode listing into an abstract syntax tree.
+
+    May raise a :py:exc:`PseudocodeParseError` or
+    :py:exc:`~vc2_pseudocode.ast.ASTConstructionError` exception on failure.
+    """
     parser = Parser(grammar)
     try:
         parse_tree = parser.parse(string)
     except ParseError as e:
         raise PseudocodeParseError(e.line, e.column, e.snippet, e.expectations)
 
-    transformer = ToAST()
-    ast = cast(Listing, transformer.transform(parse_tree))
+    ast = cast(Listing, ToAST().transform(parse_tree))
+
+    infer_labels(string, ast)
 
     return ast

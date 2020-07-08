@@ -31,8 +31,6 @@ from vc2_pseudocode.ast import (
 from vc2_pseudocode.parser import parse
 
 from vc2_pseudocode.python_transformer import (
-    UndefinedArrayOrMapError,
-    VariableCalledAsFunctionError,
     PYTHON_OPERATOR_PRECEDENCE_TABLE,
     PYTHON_OPERATOR_ASSOCIATIVITY_TABLE,
     split_trailing_comments,
@@ -418,66 +416,6 @@ class TestExprAddOne:
                 x += 1
             """,
         ),
-        # Names not in current scope are considered labels
-        (
-            """
-            foo(a):
-                b = 100
-                for each c in 1, 2, 3:
-                    bar(a, b, c, d, e)
-                for d = 1 to 3:
-                    bar(a, b, c, d, e)
-                return a + b + c + d + e
-            """,
-            """
-            def foo(a):
-                b = 100
-                for c in [1, 2, 3]:
-                    bar(a, b, c, "d", "e")
-                for d in range(1, 4):
-                    bar(a, b, c, d, "e")
-                return a + b + c + d + "e"
-            """,
-        ),
-        # Redefining names in nested scopes doesn't cause problems
-        (
-            """
-            foo(a):
-                for each a in 1, 2, 3:
-                    bar(a, b)
-                return a + b
-            """,
-            """
-            def foo(a):
-                for a in [1, 2, 3]:
-                    bar(a, "b")
-                return a + "b"
-            """,
-        ),
-        # Use of names in subscripts doesn't count as defining a variable
-        (
-            """
-            foo(a):
-                a[b] = c
-                return a + b + c
-            """,
-            """
-            def foo(a):
-                a["b"] = "c"
-                return a + "b" + "c"
-            """,
-        ),
-        # Variable is unused until it is...
-        (
-            """
-            foo():
-                a = a
-            """,
-            """
-            def foo():
-                a = "a"
-            """,
-        ),
         # Perentheses are passed through (nowever unnecessary)
         (
             """
@@ -536,6 +474,17 @@ class TestExprAddOne:
             """
             def foo(a, b, c):
                 bar(a, a[b], a[b][c])
+            """,
+        ),
+        # Label expression
+        (
+            """
+            foo(a):
+                bar(a, a[b])
+            """,
+            """
+            def foo(a):
+                bar(a, a["b"])
             """,
         ),
         # Empty map expression
@@ -914,65 +863,6 @@ def test_transformer(pseudocode: str, exp_python: str) -> None:
 
     # Verify that the output is valid Python
     assert compile(python, "<none>", "exec") is not None
-
-
-@pytest.mark.parametrize(
-    "pseudocode, exp_error",
-    [
-        # Assigning to map/array which isn't defined
-        (
-            """
-            foo():
-                a[0] = 100
-            """,
-            """
-            At line 2 column 5:
-                    a[0] = 100
-                    ^
-            Map or array 'a' not defined.
-            """,
-        ),
-        # Subscripting map/array which isn't defined
-        (
-            """
-            foo():
-                return a[0]
-            """,
-            """
-            At line 2 column 12:
-                    return a[0]
-                           ^
-            Map or array 'a' not defined.
-            """,
-        ),
-    ],
-)
-def test_undefined_array_or_map(pseudocode: str, exp_error: str) -> None:
-    pseudocode = dedent(pseudocode).strip()
-    listing = parse(pseudocode)
-    transformer = PythonTransformer(pseudocode)
-    with pytest.raises(UndefinedArrayOrMapError) as exc_info:
-        transformer.transform(listing)
-    assert str(exc_info.value) == dedent(exp_error).strip()
-
-
-def test_variable_called_as_function() -> None:
-    pseudocode = "foo(bar): bar()"
-    listing = parse(pseudocode)
-    transformer = PythonTransformer(pseudocode)
-    with pytest.raises(VariableCalledAsFunctionError) as exc_info:
-        transformer.transform(listing)
-    assert (
-        str(exc_info.value)
-        == dedent(
-            """
-            At line 1 column 11:
-                foo(bar): bar()
-                          ^
-            Attempted to call variable bar as a function.
-            """
-        ).strip()
-    )
 
 
 class PythonToBracketed(ast.NodeTransformer):

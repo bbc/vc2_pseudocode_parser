@@ -2,9 +2,8 @@
 Transform a parsed AST representation of a pseudocode program into Python
 
 In general, the translation between pseudocode and Python is 'obvious'. The
-exceptions are as follows:
-
-* Labels in in the pseudocode are translated into equivalent strings in Python.
+only non-obvious part might be that labels are translated into Python string
+literals.
 
 The :py:func:`pseudocode_to_python` utility function may be used to directly
 translate pseudocode into Python. Alternatively, the lower-level
@@ -15,8 +14,6 @@ from typing import List, Iterable, Union, Mapping, Tuple, cast
 
 from textwrap import indent
 
-from contextlib import contextmanager
-
 from dataclasses import dataclass
 
 from itertools import chain
@@ -25,11 +22,7 @@ from vc2_pseudocode.parser import parse
 
 from vc2_pseudocode.operators import BinaryOp, UnaryOp, Associativity
 
-from peggie.error_message_generation import (
-    offset_to_line_and_column,
-    extract_line,
-    format_error_message,
-)
+from peggie.error_message_generation import format_error_message
 
 from vc2_pseudocode.ast import (
     Listing,
@@ -52,6 +45,8 @@ from vc2_pseudocode.ast import (
     VariableExpr,
     Variable,
     Subscript,
+    LabelExpr,
+    Label,
     EmptyMapExpr,
     BooleanExpr,
     NumberExpr,
@@ -74,49 +69,6 @@ class PythonTransformationError(Exception):
         return format_error_message(
             self.line, self.column, self.snippet, self.explanation
         )
-
-
-@dataclass
-class UndefinedArrayOrMapError(PythonTransformationError):
-    variable_name: str
-
-    @classmethod
-    def from_variable_expr(
-        cls, source: str, variable: Union[Variable, Subscript]
-    ) -> "UndefinedArrayOrMapError":
-        """
-        Create an :py:class:`UndefinedArrayOrMapError` for the variable or subscript
-        provided.
-        """
-        line, column = offset_to_line_and_column(source, variable.offset)
-        snippet = extract_line(source, line)
-
-        return cls(line, column, snippet, variable.name)
-
-    @property
-    def explanation(self) -> str:
-        return f"Map or array '{self.variable_name}' not defined."
-
-
-@dataclass
-class VariableCalledAsFunctionError(PythonTransformationError):
-    function_name: str
-
-    @classmethod
-    def from_function_call_expr(
-        cls, source: str, call: FunctionCallExpr
-    ) -> "VariableCalledAsFunctionError":
-        """
-        Create an :py:class:`VariableCalledAsFunctionError` for the function call
-        provided.
-        """
-        line, column = offset_to_line_and_column(source, call.offset)
-        snippet = extract_line(source, line)
-        return cls(line, column, snippet, call.name)
-
-    @property
-    def explanation(self) -> str:
-        return f"Attempted to call variable {self.function_name} as a function."
 
 
 PYTHON_OPERATOR_PRECEDENCE_TABLE: Mapping[Union[BinaryOp, UnaryOp], int] = {
@@ -252,43 +204,9 @@ class PythonTransformer:
     _indent: str
     """String to use to indent blocks."""
 
-    _defined_names_stack: List[str]
-    """
-    A stack of names which have been assigned a value in the current scope.
-
-    See :py:meth:`_new_scope`, :py:meth:`_add_name_to_current_scope` and
-    :py:meth:`_is_name_in_scope`.
-
-    This information is used to determine whether variable-like entities in the
-    pseudocode refer to variables or are labels. In the case of labels, the
-    Python translation uses strings instead.
-    """
-
     def __init__(self, source: str, indent: str = "    ") -> None:
         self._source = source
         self._indent = indent
-
-        self._defined_names_stack = []
-
-    @contextmanager  # type: ignore
-    def _new_scope(self) -> Iterable[None]:
-        """
-        Context manager which creates a nested scope in which names can be
-        defined.
-        """
-        old_len = len(self._defined_names_stack)
-        try:
-            yield
-        finally:
-            del self._defined_names_stack[old_len:]
-
-    def _add_name_to_current_scope(self, name: str) -> None:
-        """Add a new name to the current scope."""
-        self._defined_names_stack.append(name)
-
-    def _is_name_in_scope(self, name: str) -> bool:
-        """Check if a name is in the current scope."""
-        return name in self._defined_names_stack
 
     def transform(self, listing: Listing) -> str:
         """
@@ -330,12 +248,7 @@ class PythonTransformer:
     def _transform_function(self, function: Function) -> str:
         name = function.name
         args = ", ".join(v.name for v in function.arguments)
-
-        with self._new_scope():
-            for v in function.arguments:
-                self._add_name_to_current_scope(v.name)
-            body = self._transform_block(function, function.body)
-
+        body = self._transform_block(function, function.body)
         return f"def {name}({args}):{body}"
 
     def _transform_block(
@@ -432,10 +345,7 @@ class PythonTransformer:
     def _transform_for_each_stmt(self, stmt: ForEachStmt) -> str:
         variable = stmt.variable.name
         values = ", ".join(self._transform_expr(e) for e in stmt.values)
-
-        self._add_name_to_current_scope(variable)
         body = self._transform_block(stmt, stmt.body)
-
         return f"for {variable} in [{values}]:{body}"
 
     def _transform_for_stmt(self, stmt: ForStmt) -> str:
@@ -452,7 +362,6 @@ class PythonTransformer:
 
         end = self._transform_expr(expr_add_one(stmt.end))
 
-        self._add_name_to_current_scope(variable)
         body = self._transform_block(stmt, stmt.body)
 
         return f"for {variable} in range({start}{end}):{body}"
@@ -479,14 +388,6 @@ class PythonTransformer:
         value = self._transform_expr(stmt.value)
         eol = self._transform_eol(stmt.eol)
 
-        if isinstance(stmt.variable, Variable):
-            self._add_name_to_current_scope(stmt.variable.name)
-
-        if not self._is_name_in_scope(stmt.variable.name):
-            raise UndefinedArrayOrMapError.from_variable_expr(
-                self._source, stmt.variable
-            )
-
         return f"{variable} {op} {value}{eol}"
 
     def _transform_expr(self, expr: Expr) -> str:
@@ -500,6 +401,8 @@ class PythonTransformer:
             return self._transform_binary_expr(expr)
         elif isinstance(expr, VariableExpr):
             return self._transform_variable_expr(expr)
+        elif isinstance(expr, LabelExpr):
+            return self._transform_label_expr(expr)
         elif isinstance(expr, EmptyMapExpr):
             return self._transform_empty_map_expr(expr)
         elif isinstance(expr, BooleanExpr):
@@ -566,34 +469,11 @@ class PythonTransformer:
 
     def _transform_function_call_expr(self, expr: FunctionCallExpr) -> str:
         name = expr.name
-
-        if self._is_name_in_scope(name):
-            raise VariableCalledAsFunctionError.from_function_call_expr(
-                self._source, expr
-            )
-
         args = ", ".join(self._transform_expr(a) for a in expr.arguments)
         return f"{name}({args})"
 
     def _transform_variable_expr(self, expr: VariableExpr) -> str:
-        if self._is_name_in_scope(expr.variable.name):
-            return self._transform_variable(expr.variable)
-        else:
-            # The variable name being used has not been defined in the current
-            # scope, as a result it must be a label (which we'll translate to a
-            # string).
-            if isinstance(expr.variable, Variable):
-                return f'"{expr.variable.name}"'
-            elif isinstance(expr.variable, Subscript):
-                # Subscripting an undefined variable is not allowed
-                variable: Union[Variable, Subscript] = expr.variable
-                while not isinstance(variable, Variable):
-                    variable = variable.variable
-                raise UndefinedArrayOrMapError.from_variable_expr(
-                    self._source, variable
-                )
-            else:
-                raise TypeError(type(expr.variable))  # Unreachable
+        return self._transform_variable(expr.variable)
 
     def _transform_variable(self, expr: Union[Variable, Subscript]) -> str:
         if isinstance(expr, Variable):
@@ -604,6 +484,12 @@ class PythonTransformer:
             return f"{variable}[{subscript}]"
         else:
             raise TypeError(type(expr))  # Unreachable
+
+    def _transform_label_expr(self, expr: LabelExpr) -> str:
+        return self._transform_label(expr.label)
+
+    def _transform_label(self, label: Label) -> str:
+        return f'"{label.name}"'
 
     def _transform_empty_map_expr(self, expr: EmptyMapExpr) -> str:
         return "{}"

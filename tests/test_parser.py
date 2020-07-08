@@ -5,11 +5,11 @@ transfomer.
 
 import pytest  # type: ignore
 
-from typing import Any, List, Optional, Union, cast
+from typing import Any, List, Optional, Union, cast, Sequence, Type
 
 from textwrap import indent, dedent
 
-from dataclasses import asdict
+from dataclasses import asdict, fields
 
 from vc2_pseudocode.parser import parse, PseudocodeParseError
 
@@ -27,6 +27,8 @@ from vc2_pseudocode.ast import (
     Expr,
     VariableExpr,
     Variable,
+    LabelExpr,
+    Label,
     Subscript,
     IfElseStmt,
     IfBranch,
@@ -46,6 +48,9 @@ from vc2_pseudocode.ast import (
     EmptyLine,
     Comment,
     EOL,
+    ASTConstructionError,
+    LabelUsedAsVariableNameError,
+    CannotSubscriptLabelError,
 )
 
 
@@ -399,14 +404,14 @@ def test_if_else_block(string: str, exp_if_else_stmt: Optional[IfElseStmt]) -> N
 def test_for_each_stmt(
     string: str, exp_variable: str, exp_values: Optional[List[str]]
 ) -> None:
-    string = "foo():\n{}".format(indent(dedent(string), "    "))
+    string = "foo(a, b, c):\n{}".format(indent(dedent(string), "    "))
 
     if exp_variable is not None and exp_variable is not None:
         ast = parse(string)
         (function,) = ast.functions
         (for_each_stmt,) = function.body
         assert isinstance(for_each_stmt, ForEachStmt)
-        assert for_each_stmt.offset == 11
+        assert for_each_stmt.offset == 18
 
         assert for_each_stmt.variable.name == exp_variable
 
@@ -542,7 +547,7 @@ def test_return_stmt(string: str, exp_stmt: Optional[ReturnStmt]) -> None:
     "lhs_string, exp_lhs",
     [
         ("x", Variable(0, "x")),
-        ("x[y]", Subscript(0, Variable(0, "x"), VariableExpr(Variable(0, "y")))),
+        ("x[y]", Subscript(0, Variable(0, "x"), LabelExpr(Label(0, "y")))),
     ],
 )
 @pytest.mark.parametrize("spacing", ["", " "])
@@ -550,17 +555,17 @@ def test_return_stmt(string: str, exp_stmt: Optional[ReturnStmt]) -> None:
 def test_assignment_statement(
     lhs_string: str, exp_lhs: Union[Variable, Subscript], spacing: str, op: AssignmentOp
 ) -> None:
-    string = "foo(): {}{}{}{}b".format(lhs_string, spacing, op.value, spacing)
+    string = "foo(x): {}{}{}{}b".format(lhs_string, spacing, op.value, spacing)
     ast = parse(string)
     (function,) = ast.functions
     (assignment_stmt,) = function.body
     assert isinstance(assignment_stmt, AssignmentStmt)
-    assert assignment_stmt.offset == 7
+    assert assignment_stmt.offset == 8
 
     assert equal_ignoring_offsets_and_eol(assignment_stmt.variable, exp_lhs)
     assert assignment_stmt.op == op
     assert equal_ignoring_offsets_and_eol(
-        assignment_stmt.value, VariableExpr(Variable(0, "b"))
+        assignment_stmt.value, LabelExpr(Label(0, "b"))
     )
 
 
@@ -578,7 +583,7 @@ def test_unary_expr(spacing: str, op: UnaryOp) -> None:
     assert isinstance(expr, UnaryExpr)
 
     assert equal_ignoring_offsets_and_eol(
-        expr, UnaryExpr(0, op, VariableExpr(Variable(0, "foo"))),
+        expr, UnaryExpr(0, op, LabelExpr(Label(0, "foo"))),
     )
 
 
@@ -593,10 +598,7 @@ def test_binary_expr(spacing: str, op: BinaryOp) -> None:
     assert isinstance(expr, BinaryExpr)
 
     assert equal_ignoring_offsets_and_eol(
-        expr,
-        BinaryExpr(
-            VariableExpr(Variable(0, "foo")), op, VariableExpr(Variable(0, "bar")),
-        ),
+        expr, BinaryExpr(LabelExpr(Label(0, "foo")), op, LabelExpr(Label(0, "bar")),),
     )
 
 
@@ -640,24 +642,20 @@ def test_binary_operators(op: BinaryOp) -> None:
                     expr,
                     BinaryExpr(
                         BinaryExpr(
-                            VariableExpr(Variable(0, "a")),
-                            op1,
-                            VariableExpr(Variable(0, "b")),
+                            LabelExpr(Label(0, "a")), op1, LabelExpr(Label(0, "b")),
                         ),
                         op2,
-                        VariableExpr(Variable(0, "c")),
+                        LabelExpr(Label(0, "c")),
                     ),
                 )
             elif associativity == Associativity.right:
                 assert equal_ignoring_offsets_and_eol(
                     expr,
                     BinaryExpr(
-                        VariableExpr(Variable(0, "a")),
+                        LabelExpr(Label(0, "a")),
                         op1,
                         BinaryExpr(
-                            VariableExpr(Variable(0, "b")),
-                            op2,
-                            VariableExpr(Variable(0, "c")),
+                            LabelExpr(Label(0, "b")), op2, LabelExpr(Label(0, "c")),
                         ),
                     ),
                 )
@@ -675,11 +673,9 @@ def test_binary_operators(op: BinaryOp) -> None:
         assert equal_ignoring_offsets_and_eol(
             expr,
             BinaryExpr(
-                BinaryExpr(
-                    VariableExpr(Variable(0, "a")), op, VariableExpr(Variable(0, "b")),
-                ),
+                BinaryExpr(LabelExpr(Label(0, "a")), op, LabelExpr(Label(0, "b")),),
                 other_op,
-                VariableExpr(Variable(0, "c")),
+                LabelExpr(Label(0, "c")),
             ),
         )
 
@@ -687,11 +683,9 @@ def test_binary_operators(op: BinaryOp) -> None:
         assert equal_ignoring_offsets_and_eol(
             expr,
             BinaryExpr(
-                VariableExpr(Variable(0, "a")),
+                LabelExpr(Label(0, "a")),
                 other_op,
-                BinaryExpr(
-                    VariableExpr(Variable(0, "b")), op, VariableExpr(Variable(0, "c")),
-                ),
+                BinaryExpr(LabelExpr(Label(0, "b")), op, LabelExpr(Label(0, "c")),),
             ),
         )
 
@@ -708,9 +702,7 @@ def test_binary_operators(op: BinaryOp) -> None:
             UnaryExpr(
                 0,
                 other_op,
-                BinaryExpr(
-                    VariableExpr(Variable(0, "a")), op, VariableExpr(Variable(0, "b")),
-                ),
+                BinaryExpr(LabelExpr(Label(0, "a")), op, LabelExpr(Label(0, "b")),),
             ),
         )
 
@@ -725,9 +717,9 @@ def test_binary_operators(op: BinaryOp) -> None:
             assert equal_ignoring_offsets_and_eol(
                 expr,
                 BinaryExpr(
-                    VariableExpr(Variable(0, "a")),
+                    LabelExpr(Label(0, "a")),
                     op,
-                    UnaryExpr(0, other_op, VariableExpr(Variable(0, "b"))),
+                    UnaryExpr(0, other_op, LabelExpr(Label(0, "b"))),
                 ),
             )
 
@@ -748,8 +740,7 @@ def test_unary_operators(op: UnaryOp) -> None:
         for op1, op2 in [(op, other_op), (other_op, op)]:
             expr = parse_expr(f"{op1.value} {op2.value} a")
             assert equal_ignoring_offsets_and_eol(
-                expr,
-                UnaryExpr(0, op1, UnaryExpr(0, op2, VariableExpr(Variable(0, "a")),),),
+                expr, UnaryExpr(0, op1, UnaryExpr(0, op2, LabelExpr(Label(0, "a")),),),
             )
 
     # Check when combined with lower-precedence binary op, this op has higher
@@ -763,9 +754,9 @@ def test_unary_operators(op: UnaryOp) -> None:
         assert equal_ignoring_offsets_and_eol(
             expr,
             BinaryExpr(
-                UnaryExpr(0, op, VariableExpr(Variable(0, "a"))),
+                UnaryExpr(0, op, LabelExpr(Label(0, "a"))),
                 other_op,
-                VariableExpr(Variable(0, "b")),
+                LabelExpr(Label(0, "b")),
             ),
         )
 
@@ -773,9 +764,9 @@ def test_unary_operators(op: UnaryOp) -> None:
         assert equal_ignoring_offsets_and_eol(
             expr,
             BinaryExpr(
-                VariableExpr(Variable(0, "a")),
+                LabelExpr(Label(0, "a")),
                 other_op,
-                UnaryExpr(0, op, VariableExpr(Variable(0, "b"))),
+                UnaryExpr(0, op, LabelExpr(Label(0, "b"))),
             ),
         )
 
@@ -797,9 +788,7 @@ def test_unary_operators(op: UnaryOp) -> None:
             expr = parse_expr(f"{other_op.value} {op.value} a")
             assert equal_ignoring_offsets_and_eol(
                 expr,
-                UnaryExpr(
-                    0, other_op, UnaryExpr(0, op, VariableExpr(Variable(0, "a"))),
-                ),
+                UnaryExpr(0, other_op, UnaryExpr(0, op, LabelExpr(Label(0, "a"))),),
             )
 
         if other_op == UnaryOp.logical_not and op != other_op:
@@ -809,9 +798,7 @@ def test_unary_operators(op: UnaryOp) -> None:
             expr = parse_expr(f"{op.value} {other_op.value} a")
             assert equal_ignoring_offsets_and_eol(
                 expr,
-                UnaryExpr(
-                    0, op, UnaryExpr(0, other_op, VariableExpr(Variable(0, "a"))),
-                ),
+                UnaryExpr(0, op, UnaryExpr(0, other_op, LabelExpr(Label(0, "a"))),),
             )
 
 
@@ -894,12 +881,15 @@ def test_function_call_expr(
     ],
 )
 def test_variable_expr(string: str, exp_variable_expr: Optional[VariableExpr]) -> None:
-    if exp_variable_expr is not None:
-        expr = parse_expr(string)
-        assert equal_ignoring_offsets_and_eol(expr, exp_variable_expr)
-    else:
+    if exp_variable_expr is None:
         with pytest.raises(PseudocodeParseError):
-            parse_expr(string)
+            parse("foo(foo): return {}".format(string))
+    else:
+        ast = parse("foo(foo): return {}".format(string))
+        (function,) = ast.functions
+        return_stmt = cast(ReturnStmt, function.body[0])
+        expr = return_stmt.value
+        assert equal_ignoring_offsets_and_eol(expr, exp_variable_expr)
 
 
 @pytest.mark.parametrize(
@@ -1076,6 +1066,330 @@ def test_stmt_block_eol(string: str, exp_eol: Optional[EOL]) -> None:
     ast = parse(string)
     (fn,) = ast.functions
     assert fn.eol == exp_eol
+
+
+def assert_labels_and_variable_types_correct(
+    node: ASTNode,
+    exp_label_suffixes: Sequence[str],
+    exp_variable_suffixes: Sequence[str],
+) -> None:
+    """
+    Asserts that label and variable names have one of the set of suffixes
+    provided.
+    """
+    if isinstance(node, Label):
+        assert any(node.name.endswith(suffix) for suffix in exp_label_suffixes), node
+    elif isinstance(node, Variable):
+        assert any(node.name.endswith(suffix) for suffix in exp_variable_suffixes), node
+    else:
+        for field in fields(node):
+            child_or_child_list = getattr(node, field.name)
+            children = (
+                child_or_child_list
+                if isinstance(child_or_child_list, list)
+                else [child_or_child_list]
+            )
+            for child in children:
+                if isinstance(child, ASTNode):
+                    assert_labels_and_variable_types_correct(
+                        child, exp_label_suffixes, exp_variable_suffixes,
+                    )
+
+
+@pytest.mark.parametrize(
+    "node, exp_label_suffixes, exp_variable_suffixes, exp_pass",
+    [
+        # No allowed suffixies
+        (Label(0, "foo_a"), [], [], False),
+        (Variable(0, "foo_a"), [], [], False),
+        # Labels
+        (Label(0, "foo_a"), ["_a", "_b"], [], True),
+        (Label(0, "foo_b"), ["_a", "_b"], [], True),
+        (Label(0, "foo_c"), ["_a", "_b"], [], False),
+        (Label(0, "foo_a"), [], ["_a", "_b"], False),
+        # Variables
+        (Variable(0, "foo_a"), [], ["_a", "_b"], True),
+        (Variable(0, "foo_b"), [], ["_a", "_b"], True),
+        (Variable(0, "foo_c"), [], ["_a", "_b"], False),
+        (Variable(0, "foo_a"), ["_a", "_b"], [], False),
+        # Descends into non-list children
+        (
+            Subscript(0, Variable(0, "foo_var"), LabelExpr(Label(0, "foo_lab"))),
+            ["_lab"],
+            ["_var"],
+            True,
+        ),
+        (
+            Subscript(0, Variable(0, "foo_var"), LabelExpr(Label(0, "foo_lab"))),
+            ["_var"],
+            ["_lab"],
+            False,
+        ),
+        (
+            Subscript(0, Variable(0, "foo_var"), LabelExpr(Label(0, "foo_lab"))),
+            ["_lab"],
+            ["_lab"],
+            False,
+        ),
+        (
+            Subscript(0, Variable(0, "foo_var"), LabelExpr(Label(0, "foo_lab"))),
+            ["_var"],
+            ["_var"],
+            False,
+        ),
+        # Descends into children containing lists
+        (
+            FunctionCallExpr(
+                0,
+                0,
+                "foo",
+                [LabelExpr(Label(0, "a_lab")), VariableExpr(Variable(0, "b_var"))],
+            ),
+            ["_lab"],
+            ["_var"],
+            True,
+        ),
+        (
+            FunctionCallExpr(
+                0,
+                0,
+                "foo",
+                [LabelExpr(Label(0, "a_lab")), VariableExpr(Variable(0, "b_var"))],
+            ),
+            ["_var"],
+            ["_lab"],
+            False,
+        ),
+        (
+            FunctionCallExpr(
+                0,
+                0,
+                "foo",
+                [LabelExpr(Label(0, "a_lab")), VariableExpr(Variable(0, "b_var"))],
+            ),
+            ["_lab"],
+            ["_lab"],
+            False,
+        ),
+        (
+            FunctionCallExpr(
+                0,
+                0,
+                "foo",
+                [LabelExpr(Label(0, "a_lab")), VariableExpr(Variable(0, "b_var"))],
+            ),
+            ["_var"],
+            ["_var"],
+            False,
+        ),
+    ],
+)
+def test_assert_labels_and_variable_types_correct(
+    node: ASTNode,
+    exp_label_suffixes: Sequence[str],
+    exp_variable_suffixes: Sequence[str],
+    exp_pass: bool,
+) -> None:
+    print(node)
+    if exp_pass:
+        assert_labels_and_variable_types_correct(
+            node, exp_label_suffixes, exp_variable_suffixes
+        )
+    else:
+        with pytest.raises(AssertionError):
+            assert_labels_and_variable_types_correct(
+                node, exp_label_suffixes, exp_variable_suffixes
+            )
+
+
+class TestInferLabels:
+    def test_valid_cases(self) -> None:
+        source = """
+            foo(a_var):  # Arguments are always variables
+                bar(a_var, b_lab)  # Never seen before value is a label
+                bar(a_var, b_lab)  # ...and still is the next time its used
+
+                # Variables in if conditions and bodies
+                if (a_var):
+                    bar(a_var)
+                # Full if/else if/else
+                if (a_var):
+                    bar(a_var)
+                else if (a_var):
+                    bar(a_var)
+                else:
+                    bar(a_var)
+
+                # Labels in if conditions and bodies
+                if (c_lab):
+                    bar(d_lab)
+                # Full if/else if/else
+                if (e_lab):
+                    bar(f_lab)
+                else if (g_lab):
+                    bar(h_lab)
+                else:
+                    bar(i_lab)
+
+                # Values defined in if stmt should live on afterwards
+                if (True):
+                    b_var = 123
+                    bar(a_var, b_var)
+                else if (True):
+                    c_var = 123
+                    bar(a_var, b_var, c_var)
+                else:
+                    d_var = 123
+                    bar(a_var, b_var, c_var, d_var)
+                bar(a_var, b_var, c_var, d_var)
+
+                # For-each defines its own variable, and processes variables and
+                # body
+                for each j_var in a_var, k_lab:
+                    e_var = bar(j_var, k_lab)
+                bar(j_var)  # Iterator variable should live on
+                bar(e_var)  # Internally defined variable should live on
+
+                # For defines its own variable, and processes bounds and body
+                for l_var = a_var to a_var:
+                    f_var = bar(l_var, a_var)
+                bar(l_var)  # Variable should live on
+                bar(f_var)  # Internally defined variable should live on
+
+                for m_var = n_lab to n_lab:
+                    bar(m_var, n_lab)
+                bar(m_var)  # Variable should live on
+
+                # While variable and body
+                while (a_var):
+                    g_var = bar(a_var, o_lab)
+                bar(g_var)  # Internally defined variable should live on
+                while (p_lab):
+                    bar(a_var, p_lab)
+
+                # Function call
+                bar(a_var, q_lab)
+
+                # Return
+                return a_var
+                return r_lab
+
+                # Assignment
+                a_var = a_var
+                a_var = s_lab
+                t_var = {}
+                t_var[a_var][u_lab] = a_var
+
+                # Peren expr
+                a_var = (a_var)
+                a_var = (v_lab)
+
+                # Unary expr
+                a_var = -a_var
+                a_var = -w_lab
+
+                # Binary expr
+                a_var = a_var - a_var
+                a_var = x_lab - y_lab
+
+                # Empty map
+                a_var = {}
+
+                # Boolean
+                a_var = True
+
+                # Number
+                a_var = 123
+        """
+        assert_labels_and_variable_types_correct(
+            parse(source), ["_lab"], ["_var"],
+        )
+
+    @pytest.mark.parametrize(
+        "source, exp_error, exp_message",
+        [
+            # Attempting to assign to label
+            (
+                """
+                    foo():
+                        bar(a)
+                        a = 123
+                """,
+                LabelUsedAsVariableNameError,
+                """
+                    At line 3 column 5:
+                            a = 123
+                            ^
+                    The name 'a' is already in use as a label name.
+                """,
+            ),
+            # Attempting to assign undefined variable to itself
+            (
+                """
+                    foo():
+                        a = a
+                """,
+                LabelUsedAsVariableNameError,
+                """
+                    At line 2 column 5:
+                            a = a
+                            ^
+                    The name 'a' is already in use as a label name.
+                """,
+            ),
+            # Attempting to subscript a label
+            (
+                """
+                    foo():
+                        bar(a)
+                        return a[b]
+                """,
+                CannotSubscriptLabelError,
+                """
+                    At line 3 column 12:
+                            return a[b]
+                                   ^
+                    Attempting to subscript label 'a'.
+                """,
+            ),
+            # Attempting to assign to subscript of label
+            (
+                """
+                    foo():
+                        bar(a)
+                        a[b] = 123
+                """,
+                CannotSubscriptLabelError,
+                """
+                    At line 3 column 5:
+                            a[b] = 123
+                            ^
+                    Attempting to subscript label 'a'.
+                """,
+            ),
+            # Attempting to use newly defined variable in its own subscript
+            (
+                """
+                    foo():
+                        a[a] = 123
+                """,
+                CannotSubscriptLabelError,
+                """
+                    At line 2 column 5:
+                            a[a] = 123
+                            ^
+                    Attempting to subscript label 'a'.
+                """,
+            ),
+        ],
+    )
+    def test_errors(
+        self, source: str, exp_error: Type[ASTConstructionError], exp_message: str
+    ) -> None:
+        with pytest.raises(exp_error) as excinfo:
+            parse(dedent(source).strip())
+
+        assert str(excinfo.value) == dedent(exp_message).strip()
 
 
 @pytest.mark.parametrize(

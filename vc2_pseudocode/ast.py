@@ -2,11 +2,17 @@
 Abstract Syntax Tree (AST) data structures for the VC-2 specification pseudocode language.
 """
 
-from typing import List, Union, Optional, Any, cast, Tuple
+from typing import List, Union, Optional, Any, cast, Tuple, Set, Sequence
 
 from peggie.transformer import ParseTreeTransformer
 
 from peggie.parser import ParseTree, Alt, Regex, Lookahead
+
+from peggie.error_message_generation import (
+    offset_to_line_and_column,
+    extract_line,
+    format_error_message,
+)
 
 from vc2_pseudocode.operators import (
     BinaryOp,
@@ -207,6 +213,15 @@ class Subscript(ASTNode):
 
 
 @dataclass
+class Label(ASTNode):
+    offset_end: int = field(init=False, repr=False)
+    name: str
+
+    def __post_init__(self) -> None:
+        self.offset_end = self.offset + len(self.name)
+
+
+@dataclass
 class Expr(ASTNode):
     pass
 
@@ -257,6 +272,17 @@ class VariableExpr(Expr):
 
 
 @dataclass
+class LabelExpr(Expr):
+    offset: int = field(init=False, repr=False)
+    offset_end: int = field(init=False, repr=False)
+    label: Label
+
+    def __post_init__(self) -> None:
+        self.offset = self.label.offset
+        self.offset_end = self.label.offset_end
+
+
+@dataclass
 class EmptyMapExpr(Expr):
     pass
 
@@ -275,6 +301,56 @@ class NumberExpr(Expr):
     value: int
     display_base: int = 10
     display_digits: int = 1
+
+
+@dataclass
+class ASTConstructionError(Exception):
+    line: int
+    column: int
+    snippet: str
+
+    @property
+    def explanation(self) -> str:
+        raise NotImplementedError()
+
+    def __str__(self) -> str:
+        return format_error_message(
+            self.line, self.column, self.snippet, self.explanation
+        )
+
+
+@dataclass
+class LabelUsedAsVariableNameError(ASTConstructionError):
+    variable_name: str
+
+    @classmethod
+    def from_variable(
+        cls, source: str, variable: Variable
+    ) -> "LabelUsedAsVariableNameError":
+        line, column = offset_to_line_and_column(source, variable.offset)
+        snippet = extract_line(source, line)
+        return cls(line, column, snippet, variable.name)
+
+    @property
+    def explanation(self) -> str:
+        return f"The name '{self.variable_name}' is already in use as a label name."
+
+
+@dataclass
+class CannotSubscriptLabelError(ASTConstructionError):
+    label_name: str
+
+    @classmethod
+    def from_subscript(
+        cls, source: str, subscript: Subscript
+    ) -> "CannotSubscriptLabelError":
+        line, column = offset_to_line_and_column(source, subscript.offset)
+        snippet = extract_line(source, line)
+        return cls(line, column, snippet, subscript.name)
+
+    @property
+    def explanation(self) -> str:
+        return f"Attempting to subscript label '{self.label_name}'."
 
 
 class ToAST(ParseTreeTransformer):
@@ -652,3 +728,139 @@ class ToAST(ParseTreeTransformer):
     def identifier(self, _pt: ParseTree, children: Any) -> str:
         _la, identifier = children
         return cast(str, identifier)
+
+
+def infer_labels(source: str, node: Listing) -> None:
+    """
+    Replace :py:class:`Variables <Variable>` whose names have no definition
+    with :py:class:`Labels <Label>`. Operates in-place.
+    """
+    _variables: Set[str] = set()
+    _labels: Set[str] = set()
+
+    def declare_variable(variable: Variable) -> None:
+        if variable.name in _labels:
+            raise LabelUsedAsVariableNameError.from_variable(source, variable)
+        else:
+            _variables.add(variable.name)
+
+    def transform_list(nodes: Sequence[ASTNode]) -> List[ASTNode]:
+        return [transform(node) for node in nodes]
+
+    def transform(node: ASTNode) -> ASTNode:
+        if isinstance(node, Listing):
+            node.functions = cast(List[Function], transform_list(node.functions))
+            return node
+        elif isinstance(node, Function):
+            # NB: New scope is started for each function
+            _variables.clear()
+            _labels.clear()
+            for variable in node.arguments:
+                declare_variable(variable)
+            node.body = cast(List[Stmt], transform_list(node.body))
+            return node
+        elif isinstance(node, IfElseStmt):
+            node.if_branches = cast(List[IfBranch], transform_list(node.if_branches))
+            if node.else_branch is not None:
+                node.else_branch = cast(ElseBranch, transform(node.else_branch))
+            return node
+        elif isinstance(node, IfBranch):
+            node.condition = cast(Expr, transform(node.condition))
+            node.body = cast(List[Stmt], transform_list(node.body))
+            return node
+        elif isinstance(node, ElseBranch):
+            node.body = cast(List[Stmt], transform_list(node.body))
+            return node
+        elif isinstance(node, ForEachStmt):
+            # NB: Values processed before variable comes into scope
+            node.values = cast(List[Expr], transform_list(node.values))
+            declare_variable(node.variable)
+            node.body = cast(List[Stmt], transform_list(node.body))
+            return node
+        elif isinstance(node, ForStmt):
+            # NB: Endpoints processed before variable comes into scope
+            node.start = cast(Expr, transform(node.start))
+            node.end = cast(Expr, transform(node.end))
+            declare_variable(node.variable)
+            node.body = cast(List[Stmt], transform_list(node.body))
+            return node
+        elif isinstance(node, WhileStmt):
+            node.condition = cast(Expr, transform(node.condition))
+            node.body = cast(List[Stmt], transform_list(node.body))
+            return node
+        elif isinstance(node, FunctionCallStmt):
+            node.call = cast(FunctionCallExpr, transform(node.call))
+            return node
+        elif isinstance(node, ReturnStmt):
+            node.value = cast(Expr, transform(node.value))
+            return node
+        elif isinstance(node, AssignmentStmt):
+            # NB: Value and subscripts processed before variable comes into scope
+            node.value = cast(Expr, transform(node.value))
+
+            if isinstance(node.variable, Subscript):
+                node.variable = cast(Subscript, transform(node.variable))
+            elif isinstance(node.variable, Variable):
+                declare_variable(node.variable)
+                node.variable = cast(
+                    Variable, transform(node.variable)
+                )  # Not really necessary...
+
+            return node
+        elif isinstance(node, Variable):
+            if node.name not in _variables:
+                _labels.add(node.name)
+                return Label(node.offset, node.name)
+            else:
+                return node
+        elif isinstance(node, Subscript):
+            variable_or_label = transform(node.variable)
+            if isinstance(variable_or_label, (Variable, Subscript)):
+                node.variable = variable_or_label
+            else:
+                raise CannotSubscriptLabelError.from_subscript(source, node)
+
+            node.subscript = cast(Expr, transform(node.subscript))
+
+            return node
+        elif isinstance(node, Label):
+            _labels.add(node.name)
+            # NB: The following situation will only occur if a hand-made AST
+            # contains Labels which shaddow variables. Consequently no 'pretty'
+            # exception has been defined.
+            assert node.name not in _variables
+            return node
+        elif isinstance(node, PerenExpr):
+            node.value = cast(Expr, transform(node.value))
+            return node
+        elif isinstance(node, UnaryExpr):
+            node.value = cast(Expr, transform(node.value))
+            return node
+        elif isinstance(node, BinaryExpr):
+            node.lhs = cast(Expr, transform(node.lhs))
+            node.rhs = cast(Expr, transform(node.rhs))
+            return node
+        elif isinstance(node, FunctionCallExpr):
+            node.arguments = cast(List[Expr], transform_list(node.arguments))
+            return node
+        elif isinstance(node, VariableExpr):
+            variable_or_label = cast(
+                Union[Variable, Subscript, Label], transform(node.variable)
+            )
+            if isinstance(variable_or_label, Label):
+                return LabelExpr(variable_or_label)
+            else:
+                return VariableExpr(variable_or_label)
+        elif isinstance(node, LabelExpr):
+            node.label = cast(Label, transform(node.label))
+            return node
+        elif isinstance(node, EmptyMapExpr):
+            return node
+        elif isinstance(node, BooleanExpr):
+            return node
+        elif isinstance(node, NumberExpr):
+            return node
+        else:
+            raise TypeError(type(node))  # Unreachable
+
+    transform(node)
