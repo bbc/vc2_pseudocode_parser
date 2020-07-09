@@ -5,6 +5,8 @@ source listings in Word (docx) format.
 
 import sys
 
+from typing import Any
+
 from argparse import ArgumentParser, FileType
 
 from vc2_pseudocode.parser import PseudocodeParseError
@@ -13,7 +15,7 @@ from vc2_pseudocode.ast import ASTConstructionError
 from vc2_pseudocode.docx_transformer import pseudocode_to_docx
 
 
-def main(*args):
+def main(*args: Any) -> int:
     parser = ArgumentParser(
         description="""
             Convert a VC-2 pseudocode listing into a SMPTE-style code listing
@@ -26,7 +28,7 @@ def main(*args):
     args = parser.parse_args(*args)
 
     try:
-        pseudocode_to_docx(args.pseudocode_file.read(), args.docx_file)
+        pseudocode_to_docx(args.pseudocode_file.read(), args.docx_file)  # type: ignore
     except (PseudocodeParseError, ASTConstructionError) as e:
         sys.stderr.write(f"Syntax error: {str(e)}\n")
         return 1
