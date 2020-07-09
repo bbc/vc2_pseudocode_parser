@@ -87,6 +87,7 @@ class AssignmentOp(Enum):
     sub_assign = "-="
     mul_assign = "*="
     idiv_assign = "//="
+    pow_assign = "**="
     and_assign = "&="
     xor_assign = "^="
     or_assign = "|="

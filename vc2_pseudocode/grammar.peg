@@ -34,7 +34,7 @@ return_stmt        <- "return" ws_ expr eol
 
 condition      <- "(" ws expr ws ")"
 for_each_list  <- expr (ws "," ws expr)*
-assignment_op  <- r"(\+|-|\*|//|&|\^|\||<<|>>)?="
+assignment_op  <- r"(\+|-|\*|//|\*\*|&|\^|\||<<|>>)?="
 
 # Expressions (defined below in ascending order of precidence)
 expr <- maybe_log_or_expr
