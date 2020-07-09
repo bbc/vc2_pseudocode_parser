@@ -27,5 +27,10 @@ setup(
         "Programming Language :: Python :: 3",
     ],
     keywords="vc2 dirac dirac-pro pseudocode parser ast",
-    entry_points={"console_scripts": []},
+    entry_points={
+        "console_scripts": [
+            "vc2-pseudocode-to-python = vc2_pseudocode.scripts.vc2_pseudocode_to_python:main",
+            "vc2-pseudocode-to-docx = vc2_pseudocode.scripts.vc2_pseudocode_to_docx:main [docx]",
+        ],
+    },
 )
