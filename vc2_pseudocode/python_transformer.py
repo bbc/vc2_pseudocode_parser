@@ -10,9 +10,9 @@ translate pseudocode into Python. Alternatively, the lower-level
 :py:class:`PythonTransformer` may be used to transform a pseudocode AST.
 """
 
-from typing import List, Iterable, Union, Mapping, Tuple, cast
+from typing import List, Iterable, Union, Mapping, Tuple, Optional, cast
 
-from textwrap import indent
+from textwrap import indent, dedent
 
 from itertools import chain
 
@@ -125,6 +125,14 @@ def dedent_trailing_comments(block: str) -> str:
     return before + "\n".join(s.lstrip() for s in after.split("\n"))
 
 
+def remove_prefix_from_comment_block(block: str) -> str:
+    """
+    Remove the `#` prefix from a comment block, along with any common
+    indentation.
+    """
+    return dedent("\n".join([line[1:] for line in block.split("\n")]))
+
+
 def expr_add_one(expr: Expr) -> Expr:
     """
     Return an expression equivalent to the one provided where the equivalent
@@ -176,6 +184,10 @@ class PythonTransformer:
     indent: str
         If provided, the string to use for block indentation. Defaults to four
         spaces.
+    generate_docstrings: bool
+        If True, the first block of comments in the file and each function will
+        be converted into a docstring. Otherwise they'll be left as ordinary
+        comments.
     """
 
     _source: str
@@ -184,9 +196,15 @@ class PythonTransformer:
     _indent: str
     """String to use to indent blocks."""
 
-    def __init__(self, source: str, indent: str = "    ") -> None:
+    _generate_docstrings: bool
+    """If True, turn opening comment blocks into docstrings."""
+
+    def __init__(
+        self, source: str, indent: str = "    ", generate_docstrings: bool = True,
+    ) -> None:
         self._source = source
         self._indent = indent
+        self._generate_docstrings = generate_docstrings
 
     def transform(self, listing: Listing) -> str:
         """
@@ -214,7 +232,7 @@ class PythonTransformer:
         functions = "".join(function_definitions).rstrip("\n")
 
         leading_comments = self._transform_empty_lines(
-            listing.leading_empty_lines
+            listing.leading_empty_lines, make_first_comment_block_into_docstring=True,
         ).lstrip()
         if leading_comments:
             # Force a 3-line gap if an empty line has been left
@@ -228,7 +246,7 @@ class PythonTransformer:
     def _transform_function(self, function: Function) -> str:
         name = function.name
         args = ", ".join(v.name for v in function.arguments)
-        body = self._transform_block(function, function.body)
+        body = self._transform_block(function, function.body, True)
         return f"def {name}({args}):{body}"
 
     def _transform_block(
@@ -237,9 +255,15 @@ class PythonTransformer:
             Function, IfBranch, ElseBranch, ForEachStmt, ForStmt, WhileStmt
         ],
         body: List[Stmt],
+        make_first_comment_block_into_docstring: bool = False,
     ) -> str:
         eol = (
-            self._transform_eol(container.eol, self._indent, True)
+            self._transform_eol(
+                container.eol,
+                self._indent,
+                True,
+                make_first_comment_block_into_docstring,
+            )
             if container.eol
             else ""
         )
@@ -258,18 +282,26 @@ class PythonTransformer:
         eol: EOL,
         following_indentation: str = "",
         strip_empty_leading_lines: bool = False,
+        make_first_comment_block_into_docstring: bool = False,
     ) -> str:
         comment = f"  {eol.comment.string}" if eol.comment is not None else ""
 
         empty_lines = indent(
-            self._transform_empty_lines(eol.empty_lines, strip_empty_leading_lines),
+            self._transform_empty_lines(
+                eol.empty_lines,
+                strip_empty_leading_lines,
+                make_first_comment_block_into_docstring,
+            ),
             following_indentation,
         )
 
         return f"{comment}{empty_lines}"
 
     def _transform_empty_lines(
-        self, empty_lines: List[EmptyLine], strip_empty_leading_lines: bool = False,
+        self,
+        empty_lines: List[EmptyLine],
+        strip_empty_leading_lines: bool = False,
+        make_first_comment_block_into_docstring: bool = False,
     ) -> str:
         out_lines = ["\n"] if strip_empty_leading_lines else []
         for empty_line in empty_lines:
@@ -283,6 +315,23 @@ class PythonTransformer:
 
         if strip_empty_leading_lines:
             out_lines.pop(0)
+
+        if self._generate_docstrings and make_first_comment_block_into_docstring:
+            last_comment_line: Optional[int] = None
+            for i, line in enumerate(out_lines):
+                if line.startswith("\n#"):
+                    last_comment_line = i
+                else:
+                    break
+
+            if last_comment_line is not None:
+                comment_block = "".join(out_lines[: last_comment_line + 1])[1:]
+                comment_block = remove_prefix_from_comment_block(comment_block)
+                out_lines[: last_comment_line + 1] = [
+                    f"\n{line}" for line in comment_block.split("\n")
+                ]
+                out_lines.insert(last_comment_line + 1, '\n"""')
+                out_lines.insert(0, '\n"""')
 
         return "".join(out_lines)
 
@@ -488,7 +537,9 @@ class PythonTransformer:
             raise TypeError(expr.display_base)
 
 
-def pseudocode_to_python(pseudocode_source: str) -> str:
+def pseudocode_to_python(
+    pseudocode_source: str, indent: str = "    ", generate_docstrings: bool = True,
+) -> str:
     """
     Transform a pseudocode listing into Python.
 
@@ -497,6 +548,6 @@ def pseudocode_to_python(pseudocode_source: str) -> str:
     pseudocode contains syntactic errors.
     """
     pseudocode_ast = parse(pseudocode_source)
-    transformer = PythonTransformer(pseudocode_source)
+    transformer = PythonTransformer(pseudocode_source, indent, generate_docstrings)
     python_source = transformer.transform(pseudocode_ast)
     return python_source

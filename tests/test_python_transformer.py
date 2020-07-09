@@ -37,6 +37,7 @@ from vc2_pseudocode.python_transformer import (
     PYTHON_OPERATOR_ASSOCIATIVITY_TABLE,
     split_trailing_comments,
     dedent_trailing_comments,
+    remove_prefix_from_comment_block,
     expr_add_one,
     PythonTransformer,
     pseudocode_to_python,
@@ -117,6 +118,27 @@ def test_split_trailing_comments(block: str, exp_before: str, exp_after: str) ->
 )
 def test_dedent_trailing_comments(block: str, exp: str) -> None:
     assert dedent_trailing_comments(block) == exp
+
+
+@pytest.mark.parametrize(
+    "block, exp",
+    [
+        # Empty
+        ("", ""),
+        # Single line comment, no indent
+        ("#foo", "foo"),
+        # Single line with indent
+        ("# foo", "foo"),
+        # Multiple lines with shared indent
+        ("# foo\n# bar", "foo\nbar"),
+        # Multiple lines with differing indent
+        ("# foo\n#   bar", "foo\n  bar"),
+        # Multiple lines with differing indent, and some blank lines
+        ("# foo\n#\n#   bar", "foo\n\n  bar"),
+    ],
+)
+def test_remove_prefix_from_comment_block(block: str, exp: str) -> None:
+    assert remove_prefix_from_comment_block(block) == exp
 
 
 class TestExprAddOne:
@@ -573,291 +595,371 @@ class TestExprAddOne:
         # Leading comments adjacent to function
         (
             """
-            # Leading comment adjacent to function
-            foo():
-                return 0
-            """,
+                # Leading comment adjacent to function
+                foo():
+                    return 0
+                """,
+            '''
+                """
+                Leading comment adjacent to function
+                """
+                def foo():
+                    return 0
+            ''',
+        ),
+        # Transform block comments at start of file into docstring
+        (
             """
-            # Leading comment adjacent to function
-            def foo():
+                # Here is a comment describing
+                # this listing as a whole...
+                #
+                # Example usage:
+                #
+                #     >>> foo()
+
+                # Here's a comment separate from the main block
+
+                foo():
+                    return 0
+            """,
+            '''
+                """
+                Here is a comment describing
+                this listing as a whole...
+
+                Example usage:
+
+                    >>> foo()
+                """
+
+                # Here's a comment separate from the main block
+
+
+                def foo():
+                    return 0
+            ''',
+        ),
+        # Transform block comments at start of function body into docstring
+        (
+            """
+            foo():  # I'm separate from the docstring too!
+                # Here is a comment describing
+                # this function...
+                #
+                # Example usage:
+                #
+                #     >>> foo()
+
+                # This comment is not part of the docstring.
                 return 0
             """,
+            '''
+            def foo():  # I'm separate from the docstring too!
+                """
+                Here is a comment describing
+                this function...
+
+                Example usage:
+
+                    >>> foo()
+                """
+
+                # This comment is not part of the docstring.
+                return 0
+            ''',
         ),
         # Leading comments spaced from function
         (
             """
-            # Leading comment spaced from function
+                # Leading comment spaced from function
 
-            foo():
-                return 0
+                foo():
+                    return 0
             """,
-            """
-            # Leading comment spaced from function
+            '''
+                """
+                Leading comment spaced from function
+                """
 
 
-            def foo():
-                return 0
-            """,
+                def foo():
+                    return 0
+            ''',
         ),
         # Comments around functions
         (
             """
-            # Leading comment at start
-            # With adjacent second line
+                # Leading comment at start
+                # With adjacent second line
 
-            # And non-adjacent third line
+                # And non-adjacent third line
 
 
-            # And very non-adjacent fourth line and then a space...
+                # And very non-adjacent fourth line and then a space...
 
-            foo():
-                return 0
+                foo():
+                    return 0
 
-            # And spaced between functions
+                # And spaced between functions
 
-            bar():
-                return 0
+                bar():
+                    return 0
 
-            # And adjacent to a function
-            baz():
-                return 0
+                # And adjacent to a function
+                baz():
+                    return 0
 
-            qux():  # And on a function definition
-                # Before an if
-                if (True):  # And on an if
-                    # And inside an if
+                qux():  # And on a function definition
+                    # After a function definition
+
+                    # Before an if
+                    if (True):  # And on an if
+                        # And inside an if
+                        foo()
+                    # And before an else if
+                    else if (True):  # And on an else if
+                        # And inside an else if
+                        foo()
+                    # And before an else
+                    else:  # And on an else
+                        # And inside an else
+                        foo()
+
+                    # Before a for each
+                    for each x in 1, 2, 3:  # On a for each
+                        # Inside a for each
+                        foo()
+
+                    # Before a for
+                    for x = 1 to 3:  # On a for
+                        # Inside a for
+                        foo()
+
+                    # Before a while
+                    while (False):  # On a while
+                        # Inside a while
+                        foo()
+
+                    # Before an assignment
+                    x = 100  # On an assignment
+
+                    # Before a call
+                    foo()  # On a call
+
+                    # Before a return
+                    return 0  # On a return
+
+                quo():
+                    # Top of function...
+
+                    # Spaced before an if
+
+                    if (True):
+                        foo()
+                    # And spaced before an else if
+
+                    else if (True):
+                        foo()
+                    # And spaced before an else
+
+                    else:
+                        foo()
+
+                    # Spaced before a for each
+
+                    for each x in 1, 2, 3:
+                        foo()
+
+                    # Spaced before a for
+                    for x = 1 to 3:
+                        foo()
+
+                    # Spaced before a while
+                    while (False):
+                        foo()
+
+                    # Spaced before an assignment
+
+                    x = 100
+
+                    # Spaced before a call
+
                     foo()
-                # And before an else if
-                else if (True):  # And on an else if
-                    # And inside an else if
-                    foo()
-                # And before an else
-                else:  # And on an else
-                    # And inside an else
-                    foo()
 
-                # Before a for each
-                for each x in 1, 2, 3:  # On a for each
-                    # Inside a for each
-                    foo()
+                    # Spaced before a return
 
-                # Before a for
-                for x = 1 to 3:  # On a for
-                    # Inside a for
-                    foo()
+                    return 0
 
-                # Before a while
-                while (False):  # On a while
-                    # Inside a while
-                    foo()
+                qac(): return 0  # Comment on one-liner function
 
-                # Before an assignment
-                x = 100  # On an assignment
+                qiz():
+                    if (True): return 0  # Comment on one-liner if
+                    else if (True): return 0  # Comment on one-liner else if
+                    else: return 0  # Comment on one-liner else
 
-                # Before a call
-                foo()  # On a call
+                    for each x in 1, 2, 3: foo()  # Comment on one-liner for each
 
-                # Before a return
-                return 0  # On a return
+                    for x = 1 to 3: foo()  # Comment on one-liner for
 
-            quo():
-                # Spaced before an if
+                    while (False): foo()  # Comment on one-liner while
 
-                if (True):
-                    foo()
-                # And spaced before an else if
+                # And at the end of a file
+                # Adjacent
 
-                else if (True):
-                    foo()
-                # And spaced before an else
-
-                else:
-                    foo()
-
-                # Spaced before a for each
-
-                for each x in 1, 2, 3:
-                    foo()
-
-                # Spaced before a for
-                for x = 1 to 3:
-                    foo()
-
-                # Spaced before a while
-                while (False):
-                    foo()
-
-                # Spaced before an assignment
-
-                x = 100
-
-                # Spaced before a call
-
-                foo()
-
-                # Spaced before a return
-
-                return 0
-
-            qac(): return 0  # Comment on one-liner function
-
-            qiz():
-                if (True): return 0  # Comment on one-liner if
-                else if (True): return 0  # Comment on one-liner else if
-                else: return 0  # Comment on one-liner else
-
-                for each x in 1, 2, 3: foo()  # Comment on one-liner for each
-
-                for x = 1 to 3: foo()  # Comment on one-liner for
-
-                while (False): foo()  # Comment on one-liner while
-
-            # And at the end of a file
-            # Adjacent
-
-            # And non-adjacent
+                # And non-adjacent
 
 
-            # And very non-adjacent
+                # And very non-adjacent
             """,
             # ------------------------------------------------------------------
-            """
-            # Leading comment at start
-            # With adjacent second line
+            '''
+                """
+                Leading comment at start
+                With adjacent second line
+                """
 
-            # And non-adjacent third line
+                # And non-adjacent third line
 
-            # And very non-adjacent fourth line and then a space...
-
-
-            def foo():
-                return 0
+                # And very non-adjacent fourth line and then a space...
 
 
-            # And spaced between functions
+                def foo():
+                    return 0
 
 
-            def bar():
-                return 0
+                # And spaced between functions
 
 
-            # And adjacent to a function
-            def baz():
-                return 0
+                def bar():
+                    return 0
 
 
-            def qux():  # And on a function definition
-                # Before an if
-                if True:  # And on an if
-                    # And inside an if
+                # And adjacent to a function
+                def baz():
+                    return 0
+
+
+                def qux():  # And on a function definition
+                    """
+                    After a function definition
+                    """
+
+                    # Before an if
+                    if True:  # And on an if
+                        # And inside an if
+                        foo()
+                    # And before an else if
+                    elif True:  # And on an else if
+                        # And inside an else if
+                        foo()
+                    # And before an else
+                    else:  # And on an else
+                        # And inside an else
+                        foo()
+
+                    # Before a for each
+                    for x in [1, 2, 3]:  # On a for each
+                        # Inside a for each
+                        foo()
+
+                    # Before a for
+                    for x in range(1, 4):  # On a for
+                        # Inside a for
+                        foo()
+
+                    # Before a while
+                    while False:  # On a while
+                        # Inside a while
+                        foo()
+
+                    # Before an assignment
+                    x = 100  # On an assignment
+
+                    # Before a call
+                    foo()  # On a call
+
+                    # Before a return
+                    return 0  # On a return
+
+
+                def quo():
+                    """
+                    Top of function...
+                    """
+
+                    # Spaced before an if
+
+                    if True:
+                        foo()
+                    # And spaced before an else if
+
+                    elif True:
+                        foo()
+                    # And spaced before an else
+
+                    else:
+                        foo()
+
+                    # Spaced before a for each
+
+                    for x in [1, 2, 3]:
+                        foo()
+
+                    # Spaced before a for
+                    for x in range(1, 4):
+                        foo()
+
+                    # Spaced before a while
+                    while False:
+                        foo()
+
+                    # Spaced before an assignment
+
+                    x = 100
+
+                    # Spaced before a call
+
                     foo()
-                # And before an else if
-                elif True:  # And on an else if
-                    # And inside an else if
-                    foo()
-                # And before an else
-                else:  # And on an else
-                    # And inside an else
-                    foo()
 
-                # Before a for each
-                for x in [1, 2, 3]:  # On a for each
-                    # Inside a for each
-                    foo()
+                    # Spaced before a return
 
-                # Before a for
-                for x in range(1, 4):  # On a for
-                    # Inside a for
-                    foo()
-
-                # Before a while
-                while False:  # On a while
-                    # Inside a while
-                    foo()
-
-                # Before an assignment
-                x = 100  # On an assignment
-
-                # Before a call
-                foo()  # On a call
-
-                # Before a return
-                return 0  # On a return
+                    return 0
 
 
-            def quo():
-                # Spaced before an if
-
-                if True:
-                    foo()
-                # And spaced before an else if
-
-                elif True:
-                    foo()
-                # And spaced before an else
-
-                else:
-                    foo()
-
-                # Spaced before a for each
-
-                for x in [1, 2, 3]:
-                    foo()
-
-                # Spaced before a for
-                for x in range(1, 4):
-                    foo()
-
-                # Spaced before a while
-                while False:
-                    foo()
-
-                # Spaced before an assignment
-
-                x = 100
-
-                # Spaced before a call
-
-                foo()
-
-                # Spaced before a return
-
-                return 0
+                def qac():
+                    return 0  # Comment on one-liner function
 
 
-            def qac():
-                return 0  # Comment on one-liner function
+                def qiz():
+                    if True:
+                        return 0  # Comment on one-liner if
+                    elif True:
+                        return 0  # Comment on one-liner else if
+                    else:
+                        return 0  # Comment on one-liner else
+
+                    for x in [1, 2, 3]:
+                        foo()  # Comment on one-liner for each
+
+                    for x in range(1, 4):
+                        foo()  # Comment on one-liner for
+
+                    while False:
+                        foo()  # Comment on one-liner while
 
 
-            def qiz():
-                if True:
-                    return 0  # Comment on one-liner if
-                elif True:
-                    return 0  # Comment on one-liner else if
-                else:
-                    return 0  # Comment on one-liner else
+                # And at the end of a file
+                # Adjacent
 
-                for x in [1, 2, 3]:
-                    foo()  # Comment on one-liner for each
+                # And non-adjacent
 
-                for x in range(1, 4):
-                    foo()  # Comment on one-liner for
-
-                while False:
-                    foo()  # Comment on one-liner while
-
-
-            # And at the end of a file
-            # Adjacent
-
-            # And non-adjacent
-
-            # And very non-adjacent
-            """,
+                # And very non-adjacent
+            ''',
         ),
     ],
 )
 def test_transformer(pseudocode: str, exp_python: str) -> None:
+    pseudocode = dedent(pseudocode).strip()
     listing = parse(pseudocode)
     transformer = PythonTransformer(pseudocode)
     python = transformer.transform(listing)
@@ -1105,6 +1207,62 @@ def test_generating_not_on_rhs_of_binary_op() -> None:
 
 def test_pseudocode_to_python() -> None:
     assert pseudocode_to_python("foo(): return bar()") == "def foo():\n    return bar()"
+
+
+def test_indent_option() -> None:
+    assert (
+        pseudocode_to_python(
+            dedent(
+                """
+                    foo():
+                      return bar()
+                """
+            ).strip(),
+            indent="        ",
+        )
+        == dedent(
+            """
+                def foo():
+                        return bar()
+            """
+        ).strip()
+    )
+
+
+def test_generate_docstrings_option() -> None:
+    assert (
+        pseudocode_to_python(
+            dedent(
+                """
+                    # Leading comment...
+
+                    # And the rest...
+
+
+                    foo():
+                        # Leading comment...
+
+                        # And the rest...
+                        return bar()
+                """
+            ).strip(),
+            generate_docstrings=False,
+        )
+        == dedent(
+            """
+                    # Leading comment...
+
+                    # And the rest...
+
+
+                    def foo():
+                        # Leading comment...
+
+                        # And the rest...
+                        return bar()
+            """
+        ).strip()
+    )
 
 
 @pytest.mark.parametrize("name", pseudocode_samples.__all__)
