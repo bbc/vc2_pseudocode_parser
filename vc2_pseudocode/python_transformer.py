@@ -188,6 +188,9 @@ class PythonTransformer:
         If True, the first block of comments in the file and each function will
         be converted into a docstring. Otherwise they'll be left as ordinary
         comments.
+    add_translation_note: bool
+        If True, adds a comment to the top of the generated output indicating
+        that this file was automatically translated from the pseudocode.
     """
 
     _source: str
@@ -197,14 +200,25 @@ class PythonTransformer:
     """String to use to indent blocks."""
 
     _generate_docstrings: bool
-    """If True, turn opening comment blocks into docstrings."""
+    """If True, turn opening comment blocks into docstrings. The default is False."""
+
+    _add_translation_note: bool
+    """
+    Add a comment to the top of the generated file indicating that it has been
+    auto-generated.
+    """
 
     def __init__(
-        self, source: str, indent: str = "    ", generate_docstrings: bool = True,
+        self,
+        source: str,
+        indent: str = "    ",
+        generate_docstrings: bool = True,
+        add_translation_note: bool = False,
     ) -> None:
         self._source = source
         self._indent = indent
         self._generate_docstrings = generate_docstrings
+        self._add_translation_note = add_translation_note
 
     def transform(self, listing: Listing) -> str:
         """
@@ -241,7 +255,11 @@ class PythonTransformer:
             else:
                 leading_comments += "\n"
 
-        return leading_comments + functions
+        note = ""
+        if self._add_translation_note:
+            note = "# This file was automatically translated from a pseudocode listing.\n\n"
+
+        return note + leading_comments + functions
 
     def _transform_function(self, function: Function) -> str:
         name = function.name
@@ -538,7 +556,10 @@ class PythonTransformer:
 
 
 def pseudocode_to_python(
-    pseudocode_source: str, indent: str = "    ", generate_docstrings: bool = True,
+    pseudocode_source: str,
+    indent: str = "    ",
+    generate_docstrings: bool = True,
+    add_translation_note: bool = False,
 ) -> str:
     """
     Transform a pseudocode listing into Python.
@@ -548,6 +569,8 @@ def pseudocode_to_python(
     pseudocode contains syntactic errors.
     """
     pseudocode_ast = parse(pseudocode_source)
-    transformer = PythonTransformer(pseudocode_source, indent, generate_docstrings)
+    transformer = PythonTransformer(
+        pseudocode_source, indent, generate_docstrings, add_translation_note
+    )
     python_source = transformer.transform(pseudocode_ast)
     return python_source

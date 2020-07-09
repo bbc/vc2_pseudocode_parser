@@ -1265,6 +1265,35 @@ def test_generate_docstrings_option() -> None:
     )
 
 
+def test_add_translation_note_option() -> None:
+    assert (
+        pseudocode_to_python(
+            dedent(
+                """
+                    # Leading comment...
+
+                    foo():
+                        return bar()
+                """
+            ).strip(),
+            add_translation_note=True,
+        )
+        == dedent(
+            '''
+                    # This file was automatically translated from a pseudocode listing.
+
+                    """
+                    Leading comment...
+                    """
+
+
+                    def foo():
+                        return bar()
+            '''
+        ).strip()
+    )
+
+
 @pytest.mark.parametrize("name", pseudocode_samples.__all__)
 def test_pseudocode_samples(name: str) -> None:
     # Sanity check that the translation is valid Python

@@ -30,7 +30,9 @@ def main(*args: Any) -> int:
     args = parser.parse_args(*args)
 
     try:
-        python = pseudocode_to_python(args.pseudocode_file.read())  # type: ignore
+        python = pseudocode_to_python(
+            args.pseudocode_file.read(), add_translation_note=True,
+        )  # type: ignore
     except (PseudocodeParseError, ASTConstructionError) as e:
         sys.stderr.write(f"Syntax error: {str(e)}\n")
         return 1
