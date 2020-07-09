@@ -11,6 +11,8 @@ from textwrap import indent, dedent
 
 from dataclasses import asdict, fields
 
+import pseudocode_samples
+
 from vc2_pseudocode.parser import parse, PseudocodeParseError
 
 from vc2_pseudocode.operators import (
@@ -2103,3 +2105,11 @@ def test_parse_error_messages(string: str, exp_error: str) -> None:
     exc = exc_info.value
     message = "\n".join(map(str.rstrip, str(exc).splitlines()[1:]))
     assert message == dedent(exp_error[1:]).rstrip()
+
+
+@pytest.mark.parametrize("name", pseudocode_samples.__all__)
+@pytest.mark.parametrize("newlines", ["\n", "\r", "\r\n"])
+def test_pseudocode_samples(name: str, newlines: str) -> None:
+    source = getattr(pseudocode_samples, name)
+    # Just check no parse error occurs
+    parse(source.replace("\n", newlines))

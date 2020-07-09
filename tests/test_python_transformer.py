@@ -7,6 +7,8 @@ import _ast
 
 from textwrap import dedent
 
+import pseudocode_samples
+
 from vc2_pseudocode.operators import (
     BinaryOp,
     UnaryOp,
@@ -1103,3 +1105,11 @@ def test_generating_not_on_rhs_of_binary_op() -> None:
 
 def test_pseudocode_to_python() -> None:
     assert pseudocode_to_python("foo(): return bar()") == "def foo():\n    return bar()"
+
+
+@pytest.mark.parametrize("name", pseudocode_samples.__all__)
+def test_pseudocode_samples(name: str) -> None:
+    # Sanity check that the translation is valid Python
+    pseudocode = getattr(pseudocode_samples, name)
+    python = pseudocode_to_python(pseudocode)
+    ast.parse(python)

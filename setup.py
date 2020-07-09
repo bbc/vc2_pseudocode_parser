@@ -12,6 +12,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=["peggie>=0.1.1"],
+    extras_require={"docx": ["python-docx>=0.3.0"]},
     url="https://github.com/bbc/vc2_pseudocode",
     author="BBC R&D",
     description="Parser and translator for the pseudocode language used in SMPTE ST 2042-1 (VC-2) standards documents.",

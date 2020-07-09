@@ -14,15 +14,11 @@ from typing import List, Iterable, Union, Mapping, Tuple, cast
 
 from textwrap import indent
 
-from dataclasses import dataclass
-
 from itertools import chain
 
 from vc2_pseudocode.parser import parse
 
 from vc2_pseudocode.operators import BinaryOp, UnaryOp, Associativity
-
-from peggie.error_message_generation import format_error_message
 
 from vc2_pseudocode.ast import (
     Listing,
@@ -53,22 +49,6 @@ from vc2_pseudocode.ast import (
     EOL,
     EmptyLine,
 )
-
-
-@dataclass
-class PythonTransformationError(Exception):
-    line: int
-    column: int
-    snippet: str
-
-    @property
-    def explanation(self) -> str:
-        raise NotImplementedError()
-
-    def __str__(self) -> str:
-        return format_error_message(
-            self.line, self.column, self.snippet, self.explanation
-        )
 
 
 PYTHON_OPERATOR_PRECEDENCE_TABLE: Mapping[Union[BinaryOp, UnaryOp], int] = {
@@ -512,10 +492,9 @@ def pseudocode_to_python(pseudocode_source: str) -> str:
     """
     Transform a pseudocode listing into Python.
 
-    Will throw a :py:exc:`vc2_pseudocode.parser.ParseError` if the supplied
-    pseudocode contains syntactic errors and
-    :py:exc:`PythonTransformationError` if the pseudocode cannot be transformed
-    into Python.
+    Will throw a :py:exc:`vc2_pseudocode.parser.ParseError` or
+    :py:exc:`vc2_pseudocode.ast.ASTConstructionError` if the supplied
+    pseudocode contains syntactic errors.
     """
     pseudocode_ast = parse(pseudocode_source)
     transformer = PythonTransformer(pseudocode_source)
