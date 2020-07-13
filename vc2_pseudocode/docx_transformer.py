@@ -138,7 +138,7 @@ class DocxTransformer:
         args = ", ".join(a.name for a in function.arguments)
         rows.append(
             ListingLine(
-                fdef(function.name) + f"({args}):",
+                fdef(function.name) + code(f"({args}):"),
                 self._transform_eol_comment(function.eol),
             )
         )
@@ -173,7 +173,7 @@ class DocxTransformer:
             prefix = keyword("if" if i == 0 else "else if")
             condition = self._transform_expr(if_branch.condition)
 
-            block_start = prefix + " (" + condition + "):"
+            block_start = prefix + code(" (") + condition + code("):")
 
             out.append(
                 ListingLine(block_start, self._transform_eol_comment(if_branch.eol))
@@ -182,7 +182,7 @@ class DocxTransformer:
                 out.extend(self._indent_listing_lines(self._transform_stmt(substmt)))
 
         if stmt.else_branch is not None:
-            block_start = keyword("else") + ":"
+            block_start = keyword("else") + code(":")
 
             out.append(
                 ListingLine(
@@ -197,13 +197,13 @@ class DocxTransformer:
     def _transform_for_each_stmt(self, stmt: ForEachStmt) -> List[ListingLine]:
 
         for_each_line = keyword("for each")
-        for_each_line += " " + stmt.variable.name
-        for_each_line += " " + keyword("in") + " "
+        for_each_line += code(f" {stmt.variable.name}")
+        for_each_line += code(" ") + keyword("in") + code(" ")
         for i, e in enumerate(stmt.values):
             if i != 0:
-                for_each_line += ", "
+                for_each_line += code(", ")
             for_each_line += self._transform_expr(e)
-        for_each_line += ":"
+        for_each_line += code(":")
 
         out = []
         out.append(ListingLine(for_each_line, self._transform_eol_comment(stmt.eol)))
@@ -214,12 +214,12 @@ class DocxTransformer:
 
     def _transform_for_stmt(self, stmt: ForStmt) -> List[ListingLine]:
         for_line = keyword("for")
-        for_line += " " + stmt.variable.name
-        for_line += " ="
-        for_line += " " + self._transform_expr(stmt.start)
-        for_line += " " + keyword("to")
-        for_line += " " + self._transform_expr(stmt.end)
-        for_line += ":"
+        for_line += code(f" {stmt.variable.name}")
+        for_line += code(" =")
+        for_line += code(" ") + self._transform_expr(stmt.start)
+        for_line += code(" ") + keyword("to")
+        for_line += code(" ") + self._transform_expr(stmt.end)
+        for_line += code(":")
 
         out = []
         out.append(ListingLine(for_line, self._transform_eol_comment(stmt.eol)))
@@ -230,7 +230,7 @@ class DocxTransformer:
 
     def _transform_while_stmt(self, stmt: WhileStmt) -> List[ListingLine]:
         while_line = keyword("while")
-        while_line += " (" + self._transform_expr(stmt.condition) + "):"
+        while_line += code(" (") + self._transform_expr(stmt.condition) + code("):")
 
         out = []
         out.append(ListingLine(while_line, self._transform_eol_comment(stmt.eol)))
@@ -247,7 +247,7 @@ class DocxTransformer:
 
     def _transform_assignment_stmt(self, stmt: AssignmentStmt) -> List[ListingLine]:
         out = self._transform_variable(stmt.variable)
-        out += " " + ASSIGNMENT_OP_TO_PARAGRAPH[stmt.op] + " "
+        out += code(" ") + ASSIGNMENT_OP_TO_PARAGRAPH[stmt.op] + code(" ")
         out += self._transform_expr(stmt.value)
         return [ListingLine(out, self._transform_eol_comment(stmt.eol))]
 
@@ -255,7 +255,9 @@ class DocxTransformer:
         return_ = keyword("return")
         value = self._transform_expr(stmt.value)
         return [
-            ListingLine(return_ + " " + value, self._transform_eol_comment(stmt.eol))
+            ListingLine(
+                return_ + code(" ") + value, self._transform_eol_comment(stmt.eol)
+            )
         ]
 
     def _transform_expr(self, expr: Expr) -> Paragraph:
@@ -281,13 +283,13 @@ class DocxTransformer:
             raise TypeError(type(expr))  # Unreachable
 
     def _transform_peren_expr(self, expr: PerenExpr) -> Paragraph:
-        return "(" + self._transform_expr(expr.value) + ")"
+        return code("(") + self._transform_expr(expr.value) + code(")")
 
     def _transform_unary_expr(self, expr: UnaryExpr) -> Paragraph:
         # NB: We assume that PerenExprs have been used to enfore the correct
         # operator precidence rules
         op = UNARY_OP_TO_PARAGRAPH[expr.op]
-        space = " " if expr.op == UnaryOp.logical_not else ""
+        space = code(" " if expr.op == UnaryOp.logical_not else "")
         value = self._transform_expr(expr.value)
         return op + space + value
 
@@ -297,16 +299,16 @@ class DocxTransformer:
         lhs = self._transform_expr(expr.lhs)
         op = BINARY_OP_TO_PARAGRPAH[expr.op]
         rhs = self._transform_expr(expr.rhs)
-        return lhs + " " + op + " " + rhs
+        return lhs + code(" ") + op + code(" ") + rhs
 
     def _transform_function_call_expr(self, expr: FunctionCallExpr) -> Paragraph:
         out = code(expr.name)
-        out += "("
+        out += code("(")
         for i, arg in enumerate(expr.arguments):
             if i != 0:
-                out += ", "
+                out += code(", ")
             out += self._transform_expr(arg)
-        out += ")"
+        out += code(")")
         return out
 
     def _transform_variable_expr(self, expr: VariableExpr) -> Paragraph:
@@ -332,7 +334,7 @@ class DocxTransformer:
             return code(var.name)
         elif isinstance(var, Subscript):
             base = self._transform_variable(var.variable)
-            subscript = "[" + self._transform_expr(var.subscript) + "]"
+            subscript = code("[") + self._transform_expr(var.subscript) + code("]")
             return base + subscript
         else:
             raise TypeError(type(var))  # Unreachable

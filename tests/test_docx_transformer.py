@@ -10,7 +10,7 @@ from vc2_pseudocode.parser import parse
 
 from vc2_pseudocode.ast import ASTNode
 
-from vc2_pseudocode.docx_generator import ListingTable
+from vc2_pseudocode.docx_generator import ListingTable, RunStyle
 
 from vc2_pseudocode.docx_transformer import DocxTransformer, pseudocode_to_docx
 
@@ -86,6 +86,28 @@ def test_document_code_has_equivalent_ast(sample_name: str) -> None:
     extracted_ast = parse(extracted_pseudocode)
 
     assert_equal_ignoring_offset_and_whitespace(ast, extracted_ast)
+
+
+@pytest.mark.parametrize("sample_name", pseudocode_samples.__all__)
+def test_document_code_is_all_styled(sample_name: str) -> None:
+    # Check that the generated pseudocode is completely styled with pseudocode
+    # text styles
+    pseudocode = getattr(pseudocode_samples, sample_name)
+    ast = parse(pseudocode)
+
+    transformer = DocxTransformer()
+    document = transformer.transform(ast)
+
+    for paragraph_or_table in document.body:
+        if isinstance(paragraph_or_table, ListingTable):
+            for row in paragraph_or_table.rows:
+                for run in row.code.runs:
+                    assert run.style in (
+                        RunStyle.pseudocode,
+                        RunStyle.pseudocode_fdef,
+                        RunStyle.pseudocode_keyword,
+                        RunStyle.pseudocode_label,
+                    )
 
 
 def test_pseudocode_to_docx(tmpdir: Any) -> None:
