@@ -10,8 +10,6 @@ from peggie.parser import Parser, ParseError, RuleExpr, RegexExpr
 from vc2_pseudocode.grammar import grammar
 from vc2_pseudocode.ast import ToAST, infer_labels, Listing
 
-import re
-
 
 parse_error_default_expr_explanations: Mapping[
     Union[RuleExpr, RegexExpr], Optional[str]
@@ -48,20 +46,20 @@ parse_error_default_expr_explanations: Mapping[
     RuleExpr("ws_"): "<space>",
     RuleExpr("h_space"): "<space>",
     # Operators
-    RegexExpr(re.compile(r"<<|>>", re.DOTALL)): "<operator>",
-    RegexExpr(re.compile(r"==|!=|<=|>=|<|>", re.DOTALL)): "<operator>",
-    RegexExpr(re.compile(r"not", re.DOTALL)): "<operator>",
-    RegexExpr(re.compile(r"and", re.DOTALL)): "<operator>",
-    RegexExpr(re.compile(r"or", re.DOTALL)): "<operator>",
-    RegexExpr(re.compile(r"\&", re.DOTALL)): "<operator>",
-    RegexExpr(re.compile(r"\*|//|%", re.DOTALL)): "<operator>",
-    RegexExpr(re.compile(r"\*\*", re.DOTALL)): "<operator>",
-    RegexExpr(re.compile(r"\+|-", re.DOTALL)): "<operator>",
-    RegexExpr(re.compile(r"\^", re.DOTALL)): "<operator>",
-    RegexExpr(re.compile(r"\|", re.DOTALL)): "<operator>",
-    RegexExpr(re.compile(r"\+|-|~", re.DOTALL)): "<operator>",
-    RegexExpr(re.compile(r"\(", re.DOTALL)): "'('",
-    RegexExpr(re.compile(r"\)", re.DOTALL)): "')'",
+    RegexExpr(r"<<|>>"): "<operator>",
+    RegexExpr(r"==|!=|<=|>=|<|>"): "<operator>",
+    RegexExpr(r"not"): "<operator>",
+    RegexExpr(r"and"): "<operator>",
+    RegexExpr(r"or"): "<operator>",
+    RegexExpr(r"\&"): "<operator>",
+    RegexExpr(r"\*|//|%"): "<operator>",
+    RegexExpr(r"\*\*"): "<operator>",
+    RegexExpr(r"\+|-"): "<operator>",
+    RegexExpr(r"\^"): "<operator>",
+    RegexExpr(r"\|"): "<operator>",
+    RegexExpr(r"\+|-|~"): "<operator>",
+    RegexExpr(r"\("): "'('",
+    RegexExpr(r"\)"): "')'",
     # Other
     RuleExpr("stmt_block"): "':'",
     RuleExpr("condition"): "'('",
@@ -71,10 +69,10 @@ parse_error_default_expr_explanations: Mapping[
     RuleExpr("function_call_arguments"): "'('",
     RuleExpr("function_arguments"): "'('",
     # Misc symbols
-    RegexExpr(re.compile(r"\,", re.DOTALL)): "','",
-    RegexExpr(re.compile(r"\=", re.DOTALL)): "'='",
-    RegexExpr(re.compile(r"\}", re.DOTALL)): "'}'",
-    RegexExpr(re.compile(r"\{", re.DOTALL)): "'{'",
+    RegexExpr(r"\,"): "','",
+    RegexExpr(r"\="): "'='",
+    RegexExpr(r"\}"): "'}'",
+    RegexExpr(r"\{"): "'{'",
 }
 
 parse_error_default_last_resort_exprs: Set[Union[RuleExpr, RegexExpr]] = {
