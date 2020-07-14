@@ -8,7 +8,7 @@ import sys
 
 from argparse import ArgumentParser, FileType
 
-from vc2_pseudocode.parser import PseudocodeParseError
+from peggie.parser import ParseError
 from vc2_pseudocode.ast import ASTConstructionError
 
 from vc2_pseudocode.python_transformer import pseudocode_to_python
@@ -34,7 +34,7 @@ def main(*args: Any) -> int:
             args.pseudocode_file.read(),  # type: ignore
             add_translation_note=True,
         )
-    except (PseudocodeParseError, ASTConstructionError) as e:
+    except (ParseError, ASTConstructionError) as e:
         sys.stderr.write(f"Syntax error: {str(e)}\n")
         return 1
 

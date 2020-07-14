@@ -9,7 +9,7 @@ from typing import Any
 
 from argparse import ArgumentParser, FileType
 
-from vc2_pseudocode.parser import PseudocodeParseError
+from peggie.parser import ParseError
 from vc2_pseudocode.ast import ASTConstructionError
 
 from vc2_pseudocode.docx_transformer import pseudocode_to_docx
@@ -29,7 +29,7 @@ def main(*args: Any) -> int:
 
     try:
         pseudocode_to_docx(args.pseudocode_file.read(), args.docx_file)  # type: ignore
-    except (PseudocodeParseError, ASTConstructionError) as e:
+    except (ParseError, ASTConstructionError) as e:
         sys.stderr.write(f"Syntax error: {str(e)}\n")
         return 1
     return 0

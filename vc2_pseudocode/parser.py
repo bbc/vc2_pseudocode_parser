@@ -76,6 +76,7 @@ parse_error_default_expr_explanations: Mapping[
     RegexExpr(re.compile(r"\}", re.DOTALL)): "'}'",
     RegexExpr(re.compile(r"\{", re.DOTALL)): "'{'",
 }
+
 parse_error_default_last_resort_exprs: Set[Union[RuleExpr, RegexExpr]] = {
     RuleExpr("single_line_stmt"),
     RuleExpr("comment"),
@@ -85,35 +86,25 @@ parse_error_default_last_resort_exprs: Set[Union[RuleExpr, RegexExpr]] = {
     RuleExpr("eof"),
     RuleExpr("eol"),
 }
+
 parse_error_default_just_indentation = False
-
-
-class PseudocodeParseError(ParseError):
-    def explain(
-        self,
-        expr_explanations: Mapping[
-            Union[RuleExpr, RegexExpr], Optional[str]
-        ] = parse_error_default_expr_explanations,
-        last_resort_exprs: Set[
-            Union[RuleExpr, RegexExpr]
-        ] = parse_error_default_last_resort_exprs,
-        just_indentation: bool = parse_error_default_just_indentation,
-    ) -> str:
-        return super().explain(expr_explanations, last_resort_exprs, just_indentation)
 
 
 def parse(string: str) -> Listing:
     """
     Parse a pseudocode listing into an abstract syntax tree.
 
-    May raise a :py:exc:`PseudocodeParseError` or
+    May raise a :py:exc:`.ParseError` or
     :py:exc:`~vc2_pseudocode.ast.ASTConstructionError` exception on failure.
     """
     parser = Parser(grammar)
     try:
         parse_tree = parser.parse(string)
     except ParseError as e:
-        raise PseudocodeParseError(e.line, e.column, e.snippet, e.expectations)
+        e.expr_explanations = parse_error_default_expr_explanations
+        e.last_resort_exprs = parse_error_default_last_resort_exprs
+        e.just_indentation = parse_error_default_just_indentation
+        raise e
 
     ast = cast(Listing, ToAST().transform(parse_tree))
 

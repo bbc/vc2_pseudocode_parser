@@ -13,7 +13,9 @@ from dataclasses import asdict, fields
 
 import pseudocode_samples
 
-from vc2_pseudocode.parser import parse, PseudocodeParseError
+from vc2_pseudocode.parser import parse
+
+from peggie.parser import ParseError
 
 from vc2_pseudocode.operators import (
     BinaryOp,
@@ -96,7 +98,7 @@ def test_listing(
             l.offset for l in ast.leading_empty_lines
         ] == exp_leading_empty_line_offsets
     else:
-        with pytest.raises(PseudocodeParseError):
+        with pytest.raises(ParseError):
             parse(string)
 
 
@@ -142,7 +144,7 @@ def test_function(
         assert function.arguments == exp_vars
         assert len(function.body) == exp_stmts
     else:
-        with pytest.raises(PseudocodeParseError):
+        with pytest.raises(ParseError):
             parse(string)
 
 
@@ -376,7 +378,7 @@ def test_if_else_block(string: str, exp_if_else_stmt: Optional[IfElseStmt]) -> N
             i = if_else_stmt.else_branch.offset
             assert string[i : i + 4] == "else"
     else:
-        with pytest.raises(PseudocodeParseError):
+        with pytest.raises(ParseError):
             parse(string)
 
 
@@ -425,7 +427,7 @@ def test_for_each_stmt(
         assert len(for_each_stmt.body) == 1
         assert equal_ignoring_offsets_and_eol(for_each_stmt.body[0], fcs("a"))
     else:
-        with pytest.raises(PseudocodeParseError):
+        with pytest.raises(ParseError):
             parse(string)
 
 
@@ -466,7 +468,7 @@ def test_for_stmt(
         assert len(for_stmt.body) == 1
         assert equal_ignoring_offsets_and_eol(for_stmt.body[0], fcs("a"))
     else:
-        with pytest.raises(PseudocodeParseError):
+        with pytest.raises(ParseError):
             parse(string)
 
 
@@ -502,7 +504,7 @@ def test_while_stmt(string: str, exp_condition: Optional[Expr]) -> None:
         assert len(for_stmt.body) == 1
         assert equal_ignoring_offsets_and_eol(for_stmt.body[0], fcs("a"))
     else:
-        with pytest.raises(PseudocodeParseError):
+        with pytest.raises(ParseError):
             parse(string)
 
 
@@ -541,7 +543,7 @@ def test_return_stmt(string: str, exp_stmt: Optional[ReturnStmt]) -> None:
         assert return_stmt.offset == 7
         assert equal_ignoring_offsets_and_eol(return_stmt, exp_stmt)
     else:
-        with pytest.raises(PseudocodeParseError):
+        with pytest.raises(ParseError):
             parse(string)
 
 
@@ -712,7 +714,7 @@ def test_binary_operators(op: BinaryOp) -> None:
         # binary expression (a quirk of the grammar, shared with other
         # languages)
         if other_op == UnaryOp.logical_not:
-            with pytest.raises(PseudocodeParseError):
+            with pytest.raises(ParseError):
                 parse_expr(f"a {op.value} {other_op.value} b")
         else:
             expr = parse_expr(f"a {op.value} {other_op.value} b")
@@ -784,7 +786,7 @@ def test_unary_operators(op: UnaryOp) -> None:
         # with other languages)
 
         if op == UnaryOp.logical_not and op != other_op:
-            with pytest.raises(PseudocodeParseError):
+            with pytest.raises(ParseError):
                 parse_expr(f"{other_op.value} {op.value} a")
         else:
             expr = parse_expr(f"{other_op.value} {op.value} a")
@@ -794,7 +796,7 @@ def test_unary_operators(op: UnaryOp) -> None:
             )
 
         if other_op == UnaryOp.logical_not and op != other_op:
-            with pytest.raises(PseudocodeParseError):
+            with pytest.raises(ParseError):
                 parse_expr(f"{op.value} {other_op.value} a")
         else:
             expr = parse_expr(f"{op.value} {other_op.value} a")
@@ -842,7 +844,7 @@ def test_function_call_expr(
             expr, FunctionCallExpr(0, 0, exp_name, exp_arguments)
         )
     else:
-        with pytest.raises(PseudocodeParseError):
+        with pytest.raises(ParseError):
             parse_expr(string)
 
 
@@ -884,7 +886,7 @@ def test_function_call_expr(
 )
 def test_variable_expr(string: str, exp_variable_expr: Optional[VariableExpr]) -> None:
     if exp_variable_expr is None:
-        with pytest.raises(PseudocodeParseError):
+        with pytest.raises(ParseError):
             parse("foo(foo): return {}".format(string))
     else:
         ast = parse("foo(foo): return {}".format(string))
@@ -913,7 +915,7 @@ def test_empty_map_expr(string: str, exp_success: bool) -> None:
         expr = parse_expr(string)
         assert expr == EmptyMapExpr(14, 14 + len(string))
     else:
-        with pytest.raises(PseudocodeParseError):
+        with pytest.raises(ParseError):
             parse_expr(string)
 
 
@@ -933,7 +935,7 @@ def test_boolean_expr(string: str, exp_value: Optional[bool]) -> None:
         expr = parse_expr(string)
         assert expr == BooleanExpr(14, exp_value)
     else:
-        with pytest.raises(PseudocodeParseError):
+        with pytest.raises(ParseError):
             parse_expr(string)
 
 
@@ -993,7 +995,7 @@ def test_number_expr(
             14, 14 + len(string), exp_value, exp_display_base, exp_display_digits
         )
     else:
-        with pytest.raises(PseudocodeParseError):
+        with pytest.raises(ParseError):
             parse_expr(string)
 
 
@@ -2100,7 +2102,7 @@ class TestInferLabels:
     ],
 )
 def test_parse_error_messages(string: str, exp_error: str) -> None:
-    with pytest.raises(PseudocodeParseError) as exc_info:
+    with pytest.raises(ParseError) as exc_info:
         parse(dedent(string))
     exc = exc_info.value
     message = "\n".join(map(str.rstrip, str(exc).splitlines()[1:]))
