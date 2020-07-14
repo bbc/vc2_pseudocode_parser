@@ -9,7 +9,7 @@ from typing import Any
 
 from argparse import ArgumentParser, FileType
 
-from peggie.parser import ParseError
+from peggie import ParseError
 from vc2_pseudocode.ast import ASTConstructionError
 
 from vc2_pseudocode.docx_transformer import pseudocode_to_docx

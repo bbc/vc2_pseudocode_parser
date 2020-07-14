@@ -1,6 +1,6 @@
 import os
 
-from peggie.grammar_compiler import compile_grammar
+from peggie import compile_grammar
 
 
 grammar_source = open(

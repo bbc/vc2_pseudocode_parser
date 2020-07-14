@@ -4,9 +4,13 @@ Abstract Syntax Tree (AST) data structures for the VC-2 specification pseudocode
 
 from typing import List, Union, Optional, Any, cast, Tuple, Set, Sequence
 
-from peggie.transformer import ParseTreeTransformer
-
-from peggie.parser import ParseTree, Alt, Regex, Lookahead
+from peggie import (
+    ParseTree,
+    Alt,
+    Regex,
+    Lookahead,
+    ParseTreeTransformer,
+)
 
 from peggie.error_message_generation import (
     offset_to_line_and_column,

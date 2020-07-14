@@ -8,7 +8,7 @@ import sys
 
 from argparse import ArgumentParser, FileType
 
-from peggie.parser import ParseError
+from peggie import ParseError
 from vc2_pseudocode.ast import ASTConstructionError
 
 from vc2_pseudocode.python_transformer import pseudocode_to_python

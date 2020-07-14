@@ -5,7 +5,7 @@ A parser for the pseudocode language which produces an Abstract Syntax Tree
 
 from typing import Optional, Mapping, Set, Union, cast
 
-from peggie.parser import Parser, ParseError, RuleExpr, RegexExpr
+from peggie import Parser, ParseError, RuleExpr, RegexExpr
 
 from vc2_pseudocode.grammar import grammar
 from vc2_pseudocode.ast import ToAST, infer_labels, Listing
