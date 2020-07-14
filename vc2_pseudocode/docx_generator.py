@@ -1,18 +1,36 @@
 """
-This module implements a fairly crude wrapper around :py:mod:`docx` for
-generating Word documents containing SMPTE specification style code listings.
+The :py:mod:`vc2_pseudocode.docx_generator` module implements a simplified
+wrapper around :py:mod:`docx` for generating Word documents containing SMPTE
+specification style code listings.
+
+Document model
+--------------
+
+Documents are defined using a hierarchy of the following classes:
 
 .. autoclass:: ListingDocument
+    :members:
+    :undoc-members:
 
 .. autoclass:: Paragraph
+    :members:
+    :undoc-members:
 
 .. autoclass:: Run
+    :members:
+    :undoc-members:
 
 .. autoclass:: RunStyle
+    :members:
+    :undoc-members:
 
 .. autoclass:: ListingTable
+    :members:
+    :undoc-members:
 
 .. autoclass:: ListingLine
+    :members:
+    :undoc-members:
 
 """
 
@@ -202,11 +220,13 @@ class Paragraph:
     A paragraph of text consisting of a series of concatenated :py:class:`Runs
     <Run>` of text.
 
+    As a convenience, the constructor accepts either a list of :py:class:`Runs
+    <Run>`, a single :py:class:`Run` or a :py:class:`str`.
+
     :py:class:`Paragraph` objects support the ``+`` operator which will
     concatenate the runs in a pair of :py:class:`Paragraphs <Paragraph>`,
-    producing a new :py:class:`Paragraph`. You can also add
-    :py:class:`Paragraphs <Paragraph>` to :py:class`Run` and :py:class:`str` to
-    similar effect.
+    producing a new :py:class:`Paragraph`. You can also add :py:class:`Run` and
+    :py:class:`str` to :py:class:`Paragraphs <Paragraph>` with similar effect.
     """
 
     runs: List["Run"] = field(default_factory=list)

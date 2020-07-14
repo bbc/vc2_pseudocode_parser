@@ -7,8 +7,13 @@ from typing import Optional, Mapping, Set, Union, cast
 
 from peggie import Parser, ParseError, RuleExpr, RegexExpr
 
-from vc2_pseudocode.grammar import grammar
-from vc2_pseudocode.ast import ToAST, infer_labels, Listing
+from vc2_pseudocode.pseudocode_parser.grammar import grammar
+from vc2_pseudocode.pseudocode_parser.ast import ToAST, infer_labels, Listing
+
+__all__ = [
+    "parse",
+    "ParseError",  # NB: Re-exported
+]
 
 
 parse_error_default_expr_explanations: Mapping[
@@ -90,10 +95,11 @@ parse_error_default_just_indentation = False
 
 def parse(string: str) -> Listing:
     """
-    Parse a pseudocode listing into an abstract syntax tree.
+    Parse a pseudocode listing into an abstract syntax tree
+    (:py:class:`.Listing`).
 
     May raise a :py:exc:`.ParseError` or
-    :py:exc:`~vc2_pseudocode.ast.ASTConstructionError` exception on failure.
+    :py:exc:`~.ASTConstructionError` exception on failure.
     """
     parser = Parser(grammar)
     try:

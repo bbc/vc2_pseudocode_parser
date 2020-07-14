@@ -2,6 +2,11 @@ import os
 
 from peggie import compile_grammar
 
+__all__ = [
+    "grammar_source",
+    "grammar",
+]
+
 
 grammar_source = open(
     os.path.join(os.path.dirname(__file__), "grammar.peg"), "r"

@@ -1,4 +1,4 @@
-from vc2_pseudocode.operators import (
+from vc2_pseudocode.pseudocode_parser.operators import (
     BinaryOp,
     UnaryOp,
     OPERATOR_PRECEDENCE_TABLE,

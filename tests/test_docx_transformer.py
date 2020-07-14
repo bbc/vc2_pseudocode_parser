@@ -6,9 +6,7 @@ from dataclasses import fields
 
 import pseudocode_samples
 
-from vc2_pseudocode.parser import parse
-
-from vc2_pseudocode.ast import ASTNode
+from vc2_pseudocode.pseudocode_parser import parse, ASTNode
 
 from vc2_pseudocode.docx_generator import ListingTable, RunStyle
 

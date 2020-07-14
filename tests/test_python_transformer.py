@@ -9,13 +9,10 @@ from textwrap import dedent
 
 import pseudocode_samples
 
-from vc2_pseudocode.operators import (
+from vc2_pseudocode.pseudocode_parser import (
     BinaryOp,
     UnaryOp,
     Associativity,
-)
-
-from vc2_pseudocode.ast import (
     Listing,
     Function,
     ReturnStmt,
@@ -28,9 +25,8 @@ from vc2_pseudocode.ast import (
     VariableExpr,
     Variable,
     EOL,
+    parse,
 )
-
-from vc2_pseudocode.parser import parse
 
 from vc2_pseudocode.python_transformer import (
     PYTHON_OPERATOR_PRECEDENCE_TABLE,

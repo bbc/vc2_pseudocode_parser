@@ -18,7 +18,7 @@ from peggie.error_message_generation import (
     format_error_message,
 )
 
-from vc2_pseudocode.operators import (
+from vc2_pseudocode.pseudocode_parser.operators import (
     BinaryOp,
     UnaryOp,
     AssignmentOp,
@@ -29,19 +29,68 @@ from vc2_pseudocode.operators import (
 from dataclasses import dataclass, field
 
 
+__all__ = [
+    "ASTNode",
+    "Listing",
+    "Comment",
+    "EmptyLine",
+    "EOL",
+    "Function",
+    "Stmt",
+    "IfElseStmt",
+    "IfBranch",
+    "ElseBranch",
+    "ForEachStmt",
+    "ForStmt",
+    "WhileStmt",
+    "FunctionCallStmt",
+    "ReturnStmt",
+    "AssignmentStmt",
+    "Variable",
+    "Subscript",
+    "Label",
+    "Expr",
+    "PerenExpr",
+    "UnaryExpr",
+    "BinaryExpr",
+    "FunctionCallExpr",
+    "VariableExpr",
+    "LabelExpr",
+    "EmptyMapExpr",
+    "BooleanExpr",
+    "NumberExpr",
+    "ASTConstructionError",
+    "LabelUsedAsVariableNameError",
+    "CannotSubscriptLabelError",
+]
+
+
 @dataclass
 class ASTNode:
     offset: int
+    """Index of first character in the source related to this node."""
+
     offset_end: int
-    """Character offset (start=inclusive, end=exclusive) into the source."""
+    """Index of the character after the final character related to this node."""
 
 
 @dataclass
 class Listing(ASTNode):
+    """The root of a pseudocode AST."""
+
     offset: int = field(init=False, repr=False)
     offset_end: int = field(init=False, repr=False)
+
     functions: List["Function"]
+    """
+    List of :py:class:`Function` trees for each function defined in the tree.
+    """
+
     leading_empty_lines: List["EmptyLine"] = field(default_factory=list)
+    """
+    List of :py:class:`EmptyLine` trees relating to empty (or comment-only)
+    lines at the start of the source listing.
+    """
 
     def __post_init__(self) -> None:
         self.offset = self.functions[0].offset
@@ -50,8 +99,11 @@ class Listing(ASTNode):
 
 @dataclass
 class Comment(ASTNode):
+    """An end-of-line comment."""
+
     offset_end: int = field(init=False, repr=False)
     string: str
+    """The comment string, including leading '#' but not trailing newline."""
 
     def __post_init__(self) -> None:
         self.offset_end = self.offset + len(self.string)
@@ -59,22 +111,48 @@ class Comment(ASTNode):
 
 @dataclass
 class EmptyLine(ASTNode):
+    """Represents an empty (or comment-only) line in the source."""
+
     comment: Optional[Comment] = None
+    """The :py:class:`Comment` on this line, if present."""
 
 
 @dataclass
 class EOL(ASTNode):
+    """The end-of-line terminator following a statement."""
+
     comment: Optional[Comment] = None
+    """A :py:class:`Comment` on the same line as the statement, if present."""
+
     empty_lines: List[EmptyLine] = field(default_factory=list)
+    """Any trailing :py:class:`EmptyLine` after this statement."""
 
 
 @dataclass
 class Function(ASTNode):
+    """
+    A function definition::
+
+        <name>(<arguments[0]>, <arguments[1]>, <...>): <eol>
+            <body>
+    """
+
     offset_end: int = field(init=False, repr=False)
+
     name: str
+    """The name of the function."""
+
     arguments: List["Variable"]
+    """
+    The :py:class:`Variable` objects corresponding with the arguments to this
+    function.
+    """
+
     body: List["Stmt"]
+    """The list of :py:class:`Stmt` which make up this function."""
+
     eol: Optional[EOL] = None
+    """:py:class:`EOL` at the end of the function heading."""
 
     def __post_init__(self) -> None:
         self.offset_end = self.body[-1].offset_end
@@ -82,15 +160,45 @@ class Function(ASTNode):
 
 @dataclass
 class Stmt(ASTNode):
+    """
+    Base-class for all statement AST nodes.
+    """
+
     pass
 
 
 @dataclass
 class IfElseStmt(Stmt):
+    r"""
+    An ``if`` statement with an arbitrary number of ``else if`` clauses and
+    optional ``else`` clause.
+
+    A ``if`` statement is broken as illustrated by the following example::
+
+        if (condition0):       # \ if_branches[0]
+            body0              # /
+        else if (condition1):  # \ if_branches[1]
+            body1              # /
+        else if (condition2):  # \ if_branches[2]
+            body2              # /
+        else:                  # \ else_branch
+            body3              # /
+    """
+
     offset: int = field(init=False, repr=False)
     offset_end: int = field(init=False, repr=False)
+
     if_branches: List["IfBranch"]
+    """
+    The opening ``if`` clause followed by any ``else if`` clauses are
+    represented as a series of :py:class:`IfBranch`.
+    """
+
     else_branch: Optional["ElseBranch"] = None
+    """
+    If an ``else`` clause is present, a :py:class:`ElseBranch` giving its
+    contents.
+    """
 
     def __post_init__(self) -> None:
         self.offset = self.if_branches[0].offset
@@ -102,10 +210,28 @@ class IfElseStmt(Stmt):
 
 @dataclass
 class IfBranch(ASTNode):
+    """
+    An ``if`` or ``else if`` clause in an if-else-if-else statement::
+
+        if (<condition>): <eol>
+            <body>
+
+    Or::
+
+        else if (<condition>): <eol>
+            <body>
+    """
+
     offset_end: int = field(init=False, repr=False)
+
     condition: "Expr"
+    """The :py:class:`Expr` representing the condition for the branch condition."""
+
     body: List[Stmt]
+    """The list of :py:class:`Stmt` to execute when the condition is True."""
+
     eol: Optional[EOL] = None
+    """:py:class:`EOL` following the ``if`` or ``else if`` clause heading."""
 
     def __post_init__(self) -> None:
         self.offset_end = self.body[-1].offset_end
@@ -113,9 +239,20 @@ class IfBranch(ASTNode):
 
 @dataclass
 class ElseBranch(ASTNode):
+    """
+    An ``else`` clause in an if-else-if-else statement::
+
+        else: <eol>
+            <body>
+    """
+
     offset_end: int = field(init=False, repr=False)
+
     body: List[Stmt]
+    """The list of :py:class:`Stmt` to execute when the else branch is reached."""
+
     eol: Optional[EOL] = None
+    """:py:class:`EOL` following the ``else`` clause heading."""
 
     def __post_init__(self) -> None:
         self.offset_end = self.body[-1].offset_end
@@ -123,11 +260,26 @@ class ElseBranch(ASTNode):
 
 @dataclass
 class ForEachStmt(Stmt):
+    """
+    A ``for each`` loop::
+
+        for each <variable> in <values[0]>, <values[1]>, <...>: <eol>
+            <body>
+    """
+
     offset_end: int = field(init=False, repr=False)
+
     variable: "Variable"
+    """The loop :py:class:`Variable`."""
+
     values: List["Expr"]
+    """The :py:class:`Expr` giving the set of values the loop will iterate over."""
+
     body: List[Stmt]
+    """The list of :py:class:`Stmt` to execute in each iteration."""
+
     eol: Optional[EOL] = None
+    """:py:class:`EOL` following the ``for each`` heading."""
 
     def __post_init__(self) -> None:
         self.offset_end = self.body[-1].offset_end
@@ -135,12 +287,29 @@ class ForEachStmt(Stmt):
 
 @dataclass
 class ForStmt(Stmt):
+    """
+    A ``for`` loop::
+
+        for <variable> = <start> to <end>: <eol>
+            <body>
+    """
+
     offset_end: int = field(init=False, repr=False)
+
     variable: "Variable"
+    """The loop :py:class:`Variable`."""
+
     start: "Expr"
+    """The :py:class:`Expr` giving the loop starting value."""
+
     end: "Expr"
+    """The :py:class:`Expr` giving the (inclusive) loop ending value."""
+
     body: List[Stmt]
+    """The list of :py:class:`Stmt` to execute in each iteration."""
+
     eol: Optional[EOL] = None
+    """:py:class:`EOL` following the ``for`` heading."""
 
     def __post_init__(self) -> None:
         self.offset_end = self.body[-1].offset_end
@@ -148,10 +317,23 @@ class ForStmt(Stmt):
 
 @dataclass
 class WhileStmt(Stmt):
+    """
+    A ``while`` loop::
+
+        while (<condition>): <eol>
+            <body>
+    """
+
     offset_end: int = field(init=False, repr=False)
+
     condition: "Expr"
+    """The :py:class:`Expr` representing the loop condition."""
+
     body: List[Stmt]
+    """The list of :py:class:`Stmt` to execute in each iteration."""
+
     eol: Optional[EOL] = None
+    """:py:class:`EOL` following the ``while`` heading."""
 
     def __post_init__(self) -> None:
         self.offset_end = self.body[-1].offset_end
@@ -159,10 +341,16 @@ class WhileStmt(Stmt):
 
 @dataclass
 class FunctionCallStmt(Stmt):
+    """A statement which represents a call to a function."""
+
     offset: int = field(init=False, repr=False)
     offset_end: int = field(init=False, repr=False)
+
     call: "FunctionCallExpr"
+    """The :py:class:`FunctionCallExpr` which defines the function call."""
+
     eol: EOL
+    """:py:class:`EOL` following the function call."""
 
     def __post_init__(self) -> None:
         self.offset = self.call.offset
@@ -171,9 +359,19 @@ class FunctionCallStmt(Stmt):
 
 @dataclass
 class ReturnStmt(Stmt):
+    """
+    A return statement::
+
+        return <value> <eol>
+    """
+
     offset_end: int = field(init=False, repr=False)
+
     value: "Expr"
+    """A :py:class:`Expr` giving the value to be returned."""
+
     eol: EOL
+    """:py:class:`EOL` following the return statement."""
 
     def __post_init__(self) -> None:
         self.offset_end = self.value.offset_end
@@ -181,12 +379,26 @@ class ReturnStmt(Stmt):
 
 @dataclass
 class AssignmentStmt(Stmt):
+    """
+    A simple or compound assignment statement::
+
+        <variable> <op> <value> <eol>  # e.g. x += 1 + 2
+    """
+
     offset: int = field(init=False, repr=False)
     offset_end: int = field(init=False, repr=False)
+
     variable: Union["Variable", "Subscript"]
+    """The :py:class:`Variable` or :py:class:`Subscript` being assigned to."""
+
     op: AssignmentOp
+    """The type of assignment being performed (:py:class:`AssignmentOp`)."""
+
     value: "Expr"
+    """The :py:class:`Expr` giving the value being assigned."""
+
     eol: EOL
+    """:py:class:`EOL` following the assignment statement."""
 
     def __post_init__(self) -> None:
         self.offset = self.variable.offset
@@ -195,8 +407,12 @@ class AssignmentStmt(Stmt):
 
 @dataclass
 class Variable(ASTNode):
+    """A use of a variable."""
+
     offset_end: int = field(init=False, repr=False)
+
     name: str
+    """The name of the variable."""
 
     def __post_init__(self) -> None:
         self.offset_end = self.offset + len(self.name)
@@ -204,9 +420,18 @@ class Variable(ASTNode):
 
 @dataclass
 class Subscript(ASTNode):
+    """A subscripted variable (e.g. ``x[1]``)."""
+
     offset: int = field(init=False, repr=False)
+
     variable: Union["Subscript", Variable]
+    """
+    The :py:class:`Variable` being subscripted (or :py:class:`Subscript` in the
+    case of a multiply subscripted variable.
+    """
+
     subscript: "Expr"
+    """The :py:class:`Expr` giving the subscript value."""
 
     def __post_init__(self) -> None:
         self.offset = self.variable.offset
@@ -218,8 +443,12 @@ class Subscript(ASTNode):
 
 @dataclass
 class Label(ASTNode):
+    """A label value."""
+
     offset_end: int = field(init=False, repr=False)
+
     name: str
+    """The label name."""
 
     def __post_init__(self) -> None:
         self.offset_end = self.offset + len(self.name)
@@ -232,14 +461,23 @@ class Expr(ASTNode):
 
 @dataclass
 class PerenExpr(Expr):
+    """A parenthesised expression."""
+
     value: Expr
+    """The parenthesised :py:class:`Expr`"""
 
 
 @dataclass
 class UnaryExpr(Expr):
+    """A unary expression, e.g. ``-foo``."""
+
     offset_end: int = field(init=False, repr=False)
+
     op: UnaryOp
+    """The operator (:py:class:`.UnaryOp`)"""
+
     value: Expr
+    """The :py:class:`Expr` the operator applies to."""
 
     def __post_init__(self) -> None:
         self.offset_end = self.value.offset_end
@@ -247,11 +485,19 @@ class UnaryExpr(Expr):
 
 @dataclass
 class BinaryExpr(Expr):
+    """A binary expression, e.g. ``a + 1``."""
+
     offset: int = field(init=False, repr=False)
     offset_end: int = field(init=False, repr=False)
+
     lhs: Expr
+    """The :py:class:`Expr` on the left-hand side of the expression."""
+
     op: BinaryOp
+    """The operator (:py:class:`.BinaryOp`)"""
+
     rhs: Expr
+    """The :py:class:`Expr` on the right-hand side of the expression."""
 
     def __post_init__(self) -> None:
         self.offset = self.lhs.offset
@@ -260,15 +506,28 @@ class BinaryExpr(Expr):
 
 @dataclass
 class FunctionCallExpr(Expr):
+    """
+    A call to a function::
+
+        <name>(<arguments[0]>, <arguments[1]>, <...>)  # e.g. foo(1, 2, 3)
+    """
+
     name: str
+    """The name of the function to be called."""
+
     arguments: List[Expr]
+    """The list of :py:class:`Expr` giving the arguments to the call."""
 
 
 @dataclass
 class VariableExpr(Expr):
+    """A use of a variable or subscripted variable."""
+
     offset: int = field(init=False, repr=False)
     offset_end: int = field(init=False, repr=False)
+
     variable: Union[Variable, Subscript]
+    """The :py:class:`Variable` or :py:class:`Subscript` used."""
 
     def __post_init__(self) -> None:
         self.offset = self.variable.offset
@@ -277,9 +536,13 @@ class VariableExpr(Expr):
 
 @dataclass
 class LabelExpr(Expr):
+    """A label literal."""
+
     offset: int = field(init=False, repr=False)
     offset_end: int = field(init=False, repr=False)
+
     label: Label
+    """The :py:class:`Label` used."""
 
     def __post_init__(self) -> None:
         self.offset = self.label.offset
@@ -288,13 +551,19 @@ class LabelExpr(Expr):
 
 @dataclass
 class EmptyMapExpr(Expr):
+    """An empty map literal (e.g. ``{}``)."""
+
     pass
 
 
 @dataclass
 class BooleanExpr(Expr):
+    """A boolean literal, i.e. ``True`` and ``False``."""
+
     offset_end: int = field(init=False, repr=False)
+
     value: bool
+    """The boolean value."""
 
     def __post_init__(self) -> None:
         self.offset_end = self.offset + (4 if self.value else 5)
@@ -302,13 +571,27 @@ class BooleanExpr(Expr):
 
 @dataclass
 class NumberExpr(Expr):
+    """A numerical literal integer, e.g. ``123`` or ``0xF00``."""
+
     value: int
+    """The (parsed) integer value."""
+
     display_base: int = 10
+    """The base which the literal was encoded in."""
+
     display_digits: int = 1
+    """
+    The number of digits used in the literal, including leading zeros but
+    excluding any prefix (e.g. ``0x`` or ``0b``).
+    """
 
 
 @dataclass
 class ASTConstructionError(Exception):
+    """
+    Exceptions thrown during construction of an AST.
+    """
+
     line: int
     column: int
     snippet: str
@@ -325,6 +608,11 @@ class ASTConstructionError(Exception):
 
 @dataclass
 class LabelUsedAsVariableNameError(ASTConstructionError):
+    """
+    Thrown when a name previously used as a label is assigned to like a
+    variable.
+    """
+
     variable_name: str
 
     @classmethod
@@ -342,6 +630,11 @@ class LabelUsedAsVariableNameError(ASTConstructionError):
 
 @dataclass
 class CannotSubscriptLabelError(ASTConstructionError):
+    """
+    Thrown when name which has previously used as a label is subscripted like a
+    variable.
+    """
+
     label_name: str
 
     @classmethod

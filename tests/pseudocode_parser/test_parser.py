@@ -13,20 +13,15 @@ from dataclasses import asdict, fields
 
 import pseudocode_samples
 
-from vc2_pseudocode.parser import parse
-
-from peggie.parser import ParseError
-
-from vc2_pseudocode.operators import (
+from vc2_pseudocode.pseudocode_parser import (
+    parse,
+    ParseError,
     BinaryOp,
     UnaryOp,
     AssignmentOp,
     OPERATOR_PRECEDENCE_TABLE,
     OPERATOR_ASSOCIATIVITY_TABLE,
     Associativity,
-)
-
-from vc2_pseudocode.ast import (
     ASTNode,
     Expr,
     VariableExpr,

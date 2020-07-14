@@ -8,6 +8,15 @@ from enum import Enum
 
 from itertools import chain
 
+__all__ = [
+    "UnaryOp",
+    "BinaryOp",
+    "OPERATOR_PRECEDENCE_TABLE",
+    "Associativity",
+    "OPERATOR_ASSOCIATIVITY_TABLE",
+    "AssignmentOp",
+]
+
 
 class UnaryOp(Enum):
     plus = "+"
@@ -61,11 +70,14 @@ OPERATOR_PRECEDENCE_TABLE: Mapping[Union[BinaryOp, UnaryOp], int] = {
     )
     for op in cast(Iterable[Union[BinaryOp, UnaryOp]], ops)
 }
-"""Operator precedence scores. Higher scores mean higher precedence."""
+"""
+:py:class:`BinaryOp` and :py:class:`UnaryOp` operator precedence scores.
+Higher scores mean higher precedence.
+"""
 
 
 class Associativity(Enum):
-    """Operator associativity."""
+    """Operator associativity types."""
 
     left = "left"
     right = "right"
@@ -78,7 +90,7 @@ OPERATOR_ASSOCIATIVITY_TABLE: Mapping[Union[BinaryOp, UnaryOp], Associativity] =
         [(op, Associativity.right) for op in UnaryOp],
     )
 )
-"""Operator associativities."""
+""":py:class:`BinaryOp` and :py:class:`UnaryOp` operator associativities."""
 
 
 class AssignmentOp(Enum):

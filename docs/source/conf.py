@@ -47,6 +47,7 @@ autodoc_typehints = "none"
 intersphinx_mapping = {
     "python": ("http://docs.python.org/3", None),
     "peggie": ("https://peggie.readthedocs.io/en/latest/", None),
+    "docx": ("https://python-docx.readthedocs.io/en/latest/", None),
 }
 
 

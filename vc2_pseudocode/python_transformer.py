@@ -1,14 +1,74 @@
-"""
-Transform a parsed AST representation of a pseudocode program into Python
+'''
+The :py:mod:`vc2_pseudocode.python_transformer` module and
+``vc2-pseudocode-to-python`` command line tool automatically translate
+pseudocode listings into valid Python.
 
 In general, the translation between pseudocode and Python is 'obvious'. The
-only non-obvious part might be that labels are translated into Python string
-literals.
+only non-obvious part, perhaps, is that labels are translated into Python
+string literals. The output is pretty-printed in a style similar to
+the `Black <https://github.com/psf/black>`_ code style with comments and
+vertical whitespace retained (in a semi-normalised fashion).
+
+For example, the following pseudocode::
+
+    add(a, b, c):
+        # A function which adds three numbers together
+        total = 0  # An accumulator
+        for each n in a, b, c:
+            total += n
+        return total
+
+    update_state(state):
+        state[count] += 1
+
+Is translated in the the following Python::
+
+    def add(a, b, c):
+        """
+        A function which adds three numbers together
+        """
+        total = 0  # An accumulator
+        for n in [a, b, c]:
+            total += n
+        return total
+
+
+    def update_state(state):
+        state["count"] += 1
+
+
+
+Command-line utility
+====================
+
+The ``vc2-pseudocode-to-python`` command line utility is provided which can
+convert a pseudocode listing into Python.
+
+Example usage::
+
+    $ vc2-pseudocode-to-python input.pc output.py
+
+
+Python API
+==========
 
 The :py:func:`pseudocode_to_python` utility function may be used to directly
-translate pseudocode into Python. Alternatively, the lower-level
-:py:class:`PythonTransformer` may be used to transform a pseudocode AST.
-"""
+translate pseudocode into Python.
+
+.. autofunction:: pseudocode_to_python
+
+Example usage::
+
+    >>> from vc2_pseudocode.python_transformer import pseudocode_to_python
+
+    >>> print(pseudocode_to_python("""
+    ...     foo(state, a):
+    ...         state[bar] = a + 1
+    ... """))
+    def foo(state, a):
+        state["bar"] = a + 1
+
+'''
 
 from typing import List, Iterable, Union, Mapping, Tuple, Optional, cast
 
@@ -16,11 +76,11 @@ from textwrap import indent, dedent
 
 from itertools import chain
 
-from vc2_pseudocode.parser import parse
+from vc2_pseudocode.pseudocode_parser.parser import parse
 
-from vc2_pseudocode.operators import BinaryOp, UnaryOp, Associativity
+from vc2_pseudocode.pseudocode_parser.operators import BinaryOp, UnaryOp, Associativity
 
-from vc2_pseudocode.ast import (
+from vc2_pseudocode.pseudocode_parser.ast import (
     Listing,
     Function,
     Stmt,
@@ -564,9 +624,25 @@ def pseudocode_to_python(
     """
     Transform a pseudocode listing into Python.
 
-    Will throw a :py:exc:`vc2_pseudocode.parser.ParseError` or
-    :py:exc:`vc2_pseudocode.ast.ASTConstructionError` if the supplied
-    pseudocode contains syntactic errors.
+    Will throw a :py:exc:`~vc2_pseudocode.pseudocode_parser.ParseError`
+    or :py:exc:`.ASTConstructionError` if the supplied pseudocode contains
+    syntactic errors.
+
+    Parameters
+    ==========
+    pseudocode_source : str
+        The pseudocode source code to translate.
+    indent : str
+        The string to use for indentation in the generated Python source.
+        Defaults to four spaces.
+    generate_docstrings : bool
+        If True, the first block of comments in the file and each function will
+        be converted into a docstring. Otherwise they'll be left as ordinary
+        comments. Defaulse to True.
+    add_translation_note : bool
+        If True, adds a comment to the top of the generated output indicating
+        that this file was automatically translated from the pseudocode.
+        Defaulse to False.
     """
     pseudocode_ast = parse(pseudocode_source)
     transformer = PythonTransformer(

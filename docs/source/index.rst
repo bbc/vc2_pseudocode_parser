@@ -13,3 +13,7 @@ specifications into alternative forms.
 .. toctree::
     :maxdepth: 2
     
+    python_transformer.rst
+    docx_transformer.rst
+    pseudocode_parser.rst
+    docx_generator.rst

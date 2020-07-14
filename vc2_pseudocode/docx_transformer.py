@@ -1,27 +1,81 @@
 """
-Transform a parsed AST representation of a pseudocode program into a Word
-document (`*.docx`) with syntax-highlighted, pretty-printed code listings, in
-the style of the VC-2 SMPTE standards documents.
+The :py:mod:`vc2_pseudocode.docx_transformer` module and
+``vc2-pseudocode-to-docx`` command line tool automatically translate pseudocode
+listings into syntax-highlighted SMPTE-style listings tables in a Word
+document.
 
-NB: only line-end comments are retained in the generated format.
+As an example the following input::
+
+    padding_data(state):                            # Ref
+        # Read a padding data block
+        for i = 1 to state[next_parse_offset]-13:   # 10.5
+            # NB: data is just discarded
+            read_byte()                             # A.2.2
+
+Is transformed into the following output:
+
+.. image:: /_static/example_docx_table.png
+
+Note that:
+
+* Syntax highlighting has been applied
+    * Keywords are in bold (e.g. ``for`` and ``to``)
+    * Labels are italicised (e.g. ``next_parse_offset``)
+    * Variables and other values are in normal print
+* Spacing is normalised (e.g. around the ``-`` operator)
+* End-of-line comments are shown in a right-hand column
+* Comments appearing on their own are omitted
+
+
+Dependencies
+============
+
+To generate word documents the `python-docx
+<https://python-docx.readthedocs.io/en/latest/>`_ library is used. This is an
+optional dependency of the :py:mod:`vc2_pseudocode` software and must be
+installed separately, e.g. using::
+
+    $ pip install python-docx
+
+
+Command-line utility
+====================
+
+The ``vc2-pseudocode-to-docx`` command line utility is provided which can
+convert a pseudocode listing into a Word document.
+
+Example usage::
+
+    $ vc2-pseudocode-to-docx input.pc output.docx
+
+
+Python API
+==========
+
+The :py:func:`pseudocode_to_docx` utility function may be used to directly
+translate pseudocode into a Word document.
+
+.. autofunction:: pseudocode_to_docx
+
+Example usage::
+
+    >>> from vc2_pseudocode.docx_transformer import pseudocode_to_docx
+
+    >>> pseudocode_source = '''
+    ...     foo(state, a):
+    ...         state[bar] = a + 1
+    ... '''
+    >>> pseudocode_to_docx(pseudocode_source, "/path/to/output.docx")  # doctest: +SKIP
+
 """
 
 from typing import Optional, List, Union
 
-from vc2_pseudocode.parser import parse
-
-from vc2_pseudocode.operators import UnaryOp, BinaryOp, AssignmentOp
-
-from vc2_pseudocode.docx_generator import (
-    ListingDocument,
-    Paragraph,
-    Run,
-    RunStyle,
-    ListingTable,
-    ListingLine,
-)
-
-from vc2_pseudocode.ast import (
+from vc2_pseudocode.pseudocode_parser import (
+    parse,
+    UnaryOp,
+    BinaryOp,
+    AssignmentOp,
     Listing,
     Function,
     Stmt,
@@ -46,6 +100,15 @@ from vc2_pseudocode.ast import (
     BooleanExpr,
     NumberExpr,
     EOL,
+)
+
+from vc2_pseudocode.docx_generator import (
+    ListingDocument,
+    Paragraph,
+    Run,
+    RunStyle,
+    ListingTable,
+    ListingLine,
 )
 
 
@@ -345,11 +408,10 @@ class DocxTransformer:
 
 def pseudocode_to_docx(pseudocode_source: str, filename: str) -> None:
     """
-    Transform a pseudocode listing into a word document.
+    Transform a pseudocode listing into a Word (docx) document.
 
-    Will throw a :py:exc:`vc2_pseudocode.parser.ParseError`
-    :py:exc:`vc2_pseudocode.ast.ASTConstructionError` if the supplied
-    pseudocode contains errors.
+    Will throw a :py:exc:`~vc2_pseudocode.pseudocode_parser.ParseError`
+    :py:exc:`.ASTConstructionError` if the supplied pseudocode contains errors.
     """
     pseudocode_ast = parse(pseudocode_source)
     transformer = DocxTransformer()
