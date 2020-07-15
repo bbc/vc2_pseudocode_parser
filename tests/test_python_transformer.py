@@ -17,7 +17,7 @@ from vc2_pseudocode_parser.parser import (
     Function,
     ReturnStmt,
     Expr,
-    PerenExpr,
+    ParenExpr,
     UnaryExpr,
     BinaryExpr,
     NumberExpr,
@@ -436,7 +436,7 @@ class TestExprAddOne:
                 x += 1
             """,
         ),
-        # Perentheses are passed through (nowever unnecessary)
+        # Parentheses are passed through (nowever unnecessary)
         (
             """
             foo(a, b):
@@ -474,7 +474,7 @@ class TestExprAddOne:
                 bar(a + ~b & c != 0 or 1)
             """,
         ),
-        # Unary operator followed by exponentiation gets perens
+        # Unary operator followed by exponentiation gets parens
         (
             """
             foo(a, b):
@@ -1074,18 +1074,18 @@ class PythonToBracketed(ast.NodeTransformer):
         return "not "
 
 
-def strip_peren_from_pseudocode_expr(expr: Expr) -> Expr:
+def strip_paren_from_pseudocode_expr(expr: Expr) -> Expr:
     """
-    Removes :py:class:`PerenExpr`s from an expression.
+    Removes :py:class:`ParenExpr`s from an expression.
     """
-    if isinstance(expr, PerenExpr):
+    if isinstance(expr, ParenExpr):
         return expr.value
     elif isinstance(expr, UnaryExpr):
-        expr.value = strip_peren_from_pseudocode_expr(expr.value)
+        expr.value = strip_paren_from_pseudocode_expr(expr.value)
         return expr
     elif isinstance(expr, BinaryExpr):
-        expr.lhs = strip_peren_from_pseudocode_expr(expr.lhs)
-        expr.rhs = strip_peren_from_pseudocode_expr(expr.rhs)
+        expr.lhs = strip_paren_from_pseudocode_expr(expr.lhs)
+        expr.rhs = strip_paren_from_pseudocode_expr(expr.rhs)
         return expr
     elif isinstance(expr, VariableExpr):
         return expr
@@ -1155,7 +1155,7 @@ def test_operator_precedence(expr_string: str) -> None:
     # NB: We remove explicit brackets from the parsetree as they are only there
     # for display purposes (the operator grouping should be completely
     # represented by the parse tree itself)
-    pseudocode_ast = strip_peren_from_pseudocode_expr(pseudocode_ast)
+    pseudocode_ast = strip_paren_from_pseudocode_expr(pseudocode_ast)
     pseudocode_bracketed = pseudocode_to_bracketed(pseudocode_ast)
 
     # Generate a fully bracketed expression for the generated Python's parse tree

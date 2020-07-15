@@ -273,7 +273,7 @@ important (since evaluation order is explicit in an AST) it may be helpful in
 retaining parentheses added for human legibility when translating the
 pseudocode into other forms.
 
-.. autoclass:: vc2_pseudocode_parser.parser.ast.PerenExpr
+.. autoclass:: vc2_pseudocode_parser.parser.ast.ParenExpr
     :members:
     :exclude-members: offset, offset_end
 
@@ -432,7 +432,7 @@ __all__ = [  # noqa: F405
     "Subscript",
     "Label",
     "Expr",
-    "PerenExpr",
+    "ParenExpr",
     "UnaryExpr",
     "BinaryExpr",
     "FunctionCallExpr",

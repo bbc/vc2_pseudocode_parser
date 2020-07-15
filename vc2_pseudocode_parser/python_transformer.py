@@ -95,7 +95,7 @@ from vc2_pseudocode_parser.parser.ast import (
     AssignmentStmt,
     Expr,
     FunctionCallExpr,
-    PerenExpr,
+    ParenExpr,
     UnaryExpr,
     BinaryExpr,
     VariableExpr,
@@ -500,8 +500,8 @@ class PythonTransformer:
     def _transform_expr(self, expr: Expr) -> str:
         if isinstance(expr, FunctionCallExpr):
             return self._transform_function_call_expr(expr)
-        elif isinstance(expr, PerenExpr):
-            return self._transform_peren_expr(expr)
+        elif isinstance(expr, ParenExpr):
+            return self._transform_paren_expr(expr)
         elif isinstance(expr, UnaryExpr):
             return self._transform_unary_expr(expr)
         elif isinstance(expr, BinaryExpr):
@@ -519,7 +519,7 @@ class PythonTransformer:
         else:
             raise TypeError(type(expr))  # Unreachable
 
-    def _transform_peren_expr(self, expr: PerenExpr) -> str:
+    def _transform_paren_expr(self, expr: ParenExpr) -> str:
         value = self._transform_expr(expr.value)
         return f"({value})"
 
@@ -546,7 +546,7 @@ class PythonTransformer:
         associativity = PYTHON_OPERATOR_ASSOCIATIVITY_TABLE[op]
         rhs = self._transform_expr(expr.rhs)
 
-        # Decide perentheses for LHS
+        # Decide parentheses for LHS
         if isinstance(expr.lhs, (BinaryExpr, UnaryExpr)):
             if associativity == Associativity.left and (
                 PYTHON_OPERATOR_PRECEDENCE_TABLE[expr.lhs.op]
@@ -559,7 +559,7 @@ class PythonTransformer:
             ):
                 lhs = f"({lhs})"
 
-        # Decide perentheses for RHS
+        # Decide parentheses for RHS
         if isinstance(expr.rhs, (BinaryExpr, UnaryExpr)):
             if associativity == Associativity.left and (
                 PYTHON_OPERATOR_PRECEDENCE_TABLE[expr.rhs.op]

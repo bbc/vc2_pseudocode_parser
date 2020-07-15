@@ -90,7 +90,7 @@ from vc2_pseudocode_parser.parser import (
     Label,
     Subscript,
     Expr,
-    PerenExpr,
+    ParenExpr,
     UnaryExpr,
     BinaryExpr,
     FunctionCallExpr,
@@ -324,8 +324,8 @@ class DocxTransformer:
         ]
 
     def _transform_expr(self, expr: Expr) -> Paragraph:
-        if isinstance(expr, PerenExpr):
-            return self._transform_peren_expr(expr)
+        if isinstance(expr, ParenExpr):
+            return self._transform_paren_expr(expr)
         elif isinstance(expr, UnaryExpr):
             return self._transform_unary_expr(expr)
         elif isinstance(expr, BinaryExpr):
@@ -345,11 +345,11 @@ class DocxTransformer:
         else:
             raise TypeError(type(expr))  # Unreachable
 
-    def _transform_peren_expr(self, expr: PerenExpr) -> Paragraph:
+    def _transform_paren_expr(self, expr: ParenExpr) -> Paragraph:
         return code("(") + self._transform_expr(expr.value) + code(")")
 
     def _transform_unary_expr(self, expr: UnaryExpr) -> Paragraph:
-        # NB: We assume that PerenExprs have been used to enfore the correct
+        # NB: We assume that ParenExprs have been used to enfore the correct
         # operator precidence rules
         op = UNARY_OP_TO_PARAGRAPH[expr.op]
         space = code(" " if expr.op == UnaryOp.logical_not else "")
@@ -357,7 +357,7 @@ class DocxTransformer:
         return op + space + value
 
     def _transform_binary_expr(self, expr: BinaryExpr) -> Paragraph:
-        # NB: We assume that PerenExprs have been used to enfore the correct
+        # NB: We assume that ParenExprs have been used to enfore the correct
         # operator precidence rules
         lhs = self._transform_expr(expr.lhs)
         op = BINARY_OP_TO_PARAGRPAH[expr.op]

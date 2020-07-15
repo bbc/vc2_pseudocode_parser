@@ -50,7 +50,7 @@ __all__ = [
     "Subscript",
     "Label",
     "Expr",
-    "PerenExpr",
+    "ParenExpr",
     "UnaryExpr",
     "BinaryExpr",
     "FunctionCallExpr",
@@ -460,7 +460,7 @@ class Expr(ASTNode):
 
 
 @dataclass
-class PerenExpr(Expr):
+class ParenExpr(Expr):
     """A parenthesised expression."""
 
     value: Expr
@@ -949,10 +949,10 @@ class ToAST(ParseTreeTransformer):
     maybe_prod_expr = binary_expr
     maybe_pow_expr = binary_expr
 
-    def maybe_peren_expr(self, parse_tree: Alt, children: Any) -> Expr:
-        if parse_tree.choice_index == 0:  # Perentheses
+    def maybe_paren_expr(self, parse_tree: Alt, children: Any) -> Expr:
+        if parse_tree.choice_index == 0:  # Parentheses
             open_, _ws1, expr, _ws2, close_ = children
-            return PerenExpr(open_.start, close_.end, cast(Expr, expr))
+            return ParenExpr(open_.start, close_.end, cast(Expr, expr))
         elif parse_tree.choice_index == 1:  # Pass-through
             return cast(Expr, children)
         else:
@@ -1127,7 +1127,7 @@ def infer_labels(source: str, node: Listing) -> None:
             # exception has been defined.
             assert node.name not in _variables
             return node
-        elif isinstance(node, PerenExpr):
+        elif isinstance(node, ParenExpr):
             node.value = cast(Expr, transform(node.value))
             return node
         elif isinstance(node, UnaryExpr):

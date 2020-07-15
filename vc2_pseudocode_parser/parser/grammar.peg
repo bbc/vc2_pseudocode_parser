@@ -49,8 +49,8 @@ maybe_shift_expr   <- maybe_arith_expr   (ws r"<<|>>"           ws maybe_arith_e
 maybe_arith_expr   <- maybe_prod_expr    (ws r"\+|-"            ws maybe_prod_expr)*
 maybe_prod_expr    <- maybe_unary_expr   (ws r"\*|//|%"         ws maybe_unary_expr)*
 maybe_unary_expr   <- r"\+|-|~" ws maybe_unary_expr / maybe_pow_expr
-maybe_pow_expr     <- maybe_peren_expr   (ws "**"               ws maybe_unary_expr)*
-maybe_peren_expr   <- "(" ws expr ws ")" / atom
+maybe_pow_expr     <- maybe_paren_expr   (ws "**"               ws maybe_unary_expr)*
+maybe_paren_expr   <- "(" ws expr ws ")" / atom
 
 # Atoms
 atom <- function_call

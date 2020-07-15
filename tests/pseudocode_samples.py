@@ -237,7 +237,7 @@ ALL_SEMANTIC_FEATURES = """
             r[17] = a % b
             r[18] = a ** b
 
-            # Perentheses
+            # Parentheses
             r[19] = (a)
             r[20] = (a + b)
             r[20] = (a + b) + 3

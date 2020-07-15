@@ -1279,7 +1279,7 @@ class TestInferLabels:
                 t_var = {}
                 t_var[a_var][u_lab] = a_var
 
-                # Peren expr
+                # Paren expr
                 a_var = (a_var)
                 a_var = (v_lab)
 
@@ -1412,7 +1412,7 @@ class TestInferLabels:
                 Expected '('
             """,
         ),
-        # Function missing open peren
+        # Function missing open paren
         (
             "foo a",
             """
@@ -1421,7 +1421,7 @@ class TestInferLabels:
                 Expected '('
             """,
         ),
-        # Function missing close peren
+        # Function missing close paren
         (
             "foo(a",
             """
@@ -1516,7 +1516,7 @@ class TestInferLabels:
                 Expected <statement> (with indentation > 4)
             """,
         ),
-        # If with no peren
+        # If with no paren
         (
             """
                 foo(a):
@@ -1529,7 +1529,7 @@ class TestInferLabels:
                 Expected '('
             """,
         ),
-        # If with no close peren
+        # If with no close paren
         (
             """
                 foo(a):
@@ -1542,7 +1542,7 @@ class TestInferLabels:
                 Expected ')' or <operator>
             """,
         ),
-        # If with no close peren (and lots of potential expression parses)
+        # If with no close paren (and lots of potential expression parses)
         (
             """
                 foo(a):
@@ -1968,7 +1968,7 @@ class TestInferLabels:
                 Expected <expression>
             """,
         ),
-        # Missing peren expression
+        # Missing paren expression
         (
             """
                 foo(a):
@@ -1980,7 +1980,7 @@ class TestInferLabels:
                 Expected <expression>
             """,
         ),
-        # Missing closing peren and expression
+        # Missing closing paren and expression
         (
             """
                 foo(a):
@@ -1992,7 +1992,7 @@ class TestInferLabels:
                 Expected <expression>
             """,
         ),
-        # Missing closing peren
+        # Missing closing paren
         (
             """
                 foo(a):
