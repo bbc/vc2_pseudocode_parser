@@ -1,3 +1,5 @@
+.. _pseudocode-to-python:
+
 Pseudocode to Python translation
 ================================
 

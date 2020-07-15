@@ -1,3 +1,5 @@
+.. _docx-generator:
+
 Word Document Construction
 ==========================
 
