@@ -1,6 +1,6 @@
 from typing import Any
 
-from vc2_pseudocode.docx_generator import (
+from vc2_pseudocode_parser.docx_generator import (
     ListingDocument,
     Paragraph,
     Run,

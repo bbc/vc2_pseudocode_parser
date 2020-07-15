@@ -6,11 +6,11 @@ from dataclasses import fields
 
 import pseudocode_samples
 
-from vc2_pseudocode.pseudocode_parser import parse, ASTNode
+from vc2_pseudocode_parser.pseudocode_parser import parse, ASTNode
 
-from vc2_pseudocode.docx_generator import ListingTable, RunStyle
+from vc2_pseudocode_parser.docx_generator import ListingTable, RunStyle
 
-from vc2_pseudocode.docx_transformer import DocxTransformer, pseudocode_to_docx
+from vc2_pseudocode_parser.docx_transformer import DocxTransformer, pseudocode_to_docx
 
 
 def assert_equal_ignoring_offset_and_whitespace(a: ASTNode, b: ASTNode) -> None:

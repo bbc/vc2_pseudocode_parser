@@ -1,5 +1,5 @@
 '''
-The :py:mod:`vc2_pseudocode.python_transformer` module and
+The :py:mod:`vc2_pseudocode_parser.python_transformer` module and
 ``vc2-pseudocode-to-python`` command line tool automatically translate
 pseudocode listings into valid Python.
 
@@ -59,7 +59,7 @@ translate pseudocode into Python.
 
 Example usage::
 
-    >>> from vc2_pseudocode.python_transformer import pseudocode_to_python
+    >>> from vc2_pseudocode_parser.python_transformer import pseudocode_to_python
 
     >>> print(pseudocode_to_python("""
     ...     foo(state, a):
@@ -76,11 +76,11 @@ from textwrap import indent, dedent
 
 from itertools import chain
 
-from vc2_pseudocode.pseudocode_parser.parser import parse
+from vc2_pseudocode_parser.pseudocode_parser.parser import parse
 
-from vc2_pseudocode.pseudocode_parser.operators import BinaryOp, UnaryOp, Associativity
+from vc2_pseudocode_parser.pseudocode_parser.operators import BinaryOp, UnaryOp, Associativity
 
-from vc2_pseudocode.pseudocode_parser.ast import (
+from vc2_pseudocode_parser.pseudocode_parser.ast import (
     Listing,
     Function,
     Stmt,
@@ -624,7 +624,7 @@ def pseudocode_to_python(
     """
     Transform a pseudocode listing into Python.
 
-    Will throw a :py:exc:`~vc2_pseudocode.pseudocode_parser.ParseError`
+    Will throw a :py:exc:`~vc2_pseudocode_parser.pseudocode_parser.ParseError`
     or :py:exc:`.ASTConstructionError` if the supplied pseudocode contains
     syntactic errors.
 

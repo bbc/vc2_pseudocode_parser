@@ -9,9 +9,9 @@ from typing import Any
 
 from argparse import ArgumentParser, FileType
 
-from vc2_pseudocode.pseudocode_parser import ParseError, ASTConstructionError
+from vc2_pseudocode_parser.pseudocode_parser import ParseError, ASTConstructionError
 
-from vc2_pseudocode.docx_transformer import pseudocode_to_docx
+from vc2_pseudocode_parser.docx_transformer import pseudocode_to_docx
 
 
 def main(*args: Any) -> int:

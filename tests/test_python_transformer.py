@@ -9,7 +9,7 @@ from textwrap import dedent
 
 import pseudocode_samples
 
-from vc2_pseudocode.pseudocode_parser import (
+from vc2_pseudocode_parser.pseudocode_parser import (
     BinaryOp,
     UnaryOp,
     Associativity,
@@ -28,7 +28,7 @@ from vc2_pseudocode.pseudocode_parser import (
     parse,
 )
 
-from vc2_pseudocode.python_transformer import (
+from vc2_pseudocode_parser.python_transformer import (
     PYTHON_OPERATOR_PRECEDENCE_TABLE,
     PYTHON_OPERATOR_ASSOCIATIVITY_TABLE,
     split_trailing_comments,

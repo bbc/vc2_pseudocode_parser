@@ -1,0 +1,1 @@
+from vc2_pseudocode_parser.version import __version__

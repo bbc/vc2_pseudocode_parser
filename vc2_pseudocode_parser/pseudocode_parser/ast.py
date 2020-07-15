@@ -18,7 +18,7 @@ from peggie.error_message_generation import (
     format_error_message,
 )
 
-from vc2_pseudocode.pseudocode_parser.operators import (
+from vc2_pseudocode_parser.pseudocode_parser.operators import (
     BinaryOp,
     UnaryOp,
     AssignmentOp,

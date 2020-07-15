@@ -6,7 +6,7 @@ import sys
 
 # -- Path setup --------------------------------------------------------------
 
-# To find the vc2_pseudocode module
+# To find the vc2_pseudocode_parser module
 sys.path.insert(0, os.path.abspath("../.."))
 
 # -- Project information -----------------------------------------------------
@@ -15,7 +15,7 @@ project = "SMPTE VC-2 Pseudocode Parsing Software"
 copyright = "2020, SMPTE"
 author = "SMPTE"
 
-from vc2_pseudocode import __version__ as version
+from vc2_pseudocode_parser import __version__ as version
 
 release = version
 

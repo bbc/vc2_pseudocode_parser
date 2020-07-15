@@ -1,4 +1,4 @@
 Pseudocode to Python translation
 ================================
 
-.. automodule:: vc2_pseudocode.python_transformer
+.. automodule:: vc2_pseudocode_parser.python_transformer

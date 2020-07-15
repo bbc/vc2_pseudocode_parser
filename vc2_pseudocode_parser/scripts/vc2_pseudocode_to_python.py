@@ -8,9 +8,9 @@ import sys
 
 from argparse import ArgumentParser, FileType
 
-from vc2_pseudocode.pseudocode_parser import ParseError, ASTConstructionError
+from vc2_pseudocode_parser.pseudocode_parser import ParseError, ASTConstructionError
 
-from vc2_pseudocode.python_transformer import pseudocode_to_python
+from vc2_pseudocode_parser.python_transformer import pseudocode_to_python
 
 
 def main(*args: Any) -> int:

@@ -1,5 +1,5 @@
 """
-The :py:mod:`vc2_pseudocode.docx_generator` module implements a simplified
+The :py:mod:`vc2_pseudocode_parser.docx_generator` module implements a simplified
 wrapper around :py:mod:`docx` for generating Word documents containing SMPTE
 specification style code listings.
 
