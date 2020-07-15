@@ -71,7 +71,7 @@ Example usage::
 
 from typing import Optional, List, Union
 
-from vc2_pseudocode_parser.pseudocode_parser import (
+from vc2_pseudocode_parser.parser import (
     parse,
     UnaryOp,
     BinaryOp,
@@ -410,7 +410,7 @@ def pseudocode_to_docx(pseudocode_source: str, filename: str) -> None:
     """
     Transform a pseudocode listing into a Word (docx) document.
 
-    Will throw a :py:exc:`~vc2_pseudocode_parser.pseudocode_parser.ParseError`
+    Will throw a :py:exc:`~vc2_pseudocode_parser.parser.ParseError`
     :py:exc:`.ASTConstructionError` if the supplied pseudocode contains errors.
     """
     pseudocode_ast = parse(pseudocode_source)

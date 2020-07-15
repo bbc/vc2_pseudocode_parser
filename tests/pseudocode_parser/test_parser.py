@@ -13,7 +13,7 @@ from dataclasses import asdict, fields
 
 import pseudocode_samples
 
-from vc2_pseudocode_parser.pseudocode_parser import (
+from vc2_pseudocode_parser.parser import (
     parse,
     ParseError,
     BinaryOp,

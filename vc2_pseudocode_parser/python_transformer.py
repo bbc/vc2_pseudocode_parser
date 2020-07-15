@@ -76,11 +76,11 @@ from textwrap import indent, dedent
 
 from itertools import chain
 
-from vc2_pseudocode_parser.pseudocode_parser.parser import parse
+from vc2_pseudocode_parser.parser.parser import parse
 
-from vc2_pseudocode_parser.pseudocode_parser.operators import BinaryOp, UnaryOp, Associativity
+from vc2_pseudocode_parser.parser.operators import BinaryOp, UnaryOp, Associativity
 
-from vc2_pseudocode_parser.pseudocode_parser.ast import (
+from vc2_pseudocode_parser.parser.ast import (
     Listing,
     Function,
     Stmt,
@@ -624,7 +624,7 @@ def pseudocode_to_python(
     """
     Transform a pseudocode listing into Python.
 
-    Will throw a :py:exc:`~vc2_pseudocode_parser.pseudocode_parser.ParseError`
+    Will throw a :py:exc:`~vc2_pseudocode_parser.parser.ParseError`
     or :py:exc:`.ASTConstructionError` if the supplied pseudocode contains
     syntactic errors.
 

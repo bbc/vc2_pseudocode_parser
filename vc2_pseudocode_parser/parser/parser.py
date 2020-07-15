@@ -7,8 +7,8 @@ from typing import Optional, Mapping, Set, Union, cast
 
 from peggie import Parser, ParseError, RuleExpr, RegexExpr
 
-from vc2_pseudocode_parser.pseudocode_parser.grammar import grammar
-from vc2_pseudocode_parser.pseudocode_parser.ast import ToAST, infer_labels, Listing
+from vc2_pseudocode_parser.parser.grammar import grammar
+from vc2_pseudocode_parser.parser.ast import ToAST, infer_labels, Listing
 
 __all__ = [
     "parse",

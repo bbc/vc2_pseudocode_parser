@@ -1,12 +1,12 @@
 """
-The :py:mod:`vc2_pseudocode_parser.pseudocode_parser` module contains a parser and
+The :py:mod:`vc2_pseudocode_parser.parser` module contains a parser and
 associated Abstract Syntax Tree (AST) representation for the pseudocode
 language used within the VC-2 specifications [VC2]_.
 
 A quick-start example illustrating much of the pseudocode syntax and basic
 usage of this module is given below::
 
-    >>> from vc2_pseudocode_parser.pseudocode_parser import parse
+    >>> from vc2_pseudocode_parser.parser import parse
 
     >>> source = '''
     ...     some_function(arg1, arg2, arg3):
@@ -74,7 +74,7 @@ Parser
 A pseudocode snippet may be parsed into an Abstract Syntax Tree (AST) using the
 :py:func:`.parse` function:
 
-.. autofunction:: vc2_pseudocode_parser.pseudocode_parser.parse
+.. autofunction:: vc2_pseudocode_parser.parser.parse
 
 Parsing failures will result of one of the exceptions below being raised. In
 all cases, the :py:class:`str` representation of these errors produces a
@@ -82,7 +82,7 @@ user-friendly description of the problem.
 
 For example::
 
-    >>> from vc2_pseudocode_parser.pseudocode_parser import ParseError, ASTConstructionError
+    >>> from vc2_pseudocode_parser.parser import ParseError, ASTConstructionError
 
     >>> try:
     ...     ast = parse("foo(): return (a + 3")
@@ -116,7 +116,7 @@ error messages.
 
 Every node in the AST is a subclass of the :py:class:`.ASTNode` base class:
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.ast.ASTNode
+.. autoclass:: vc2_pseudocode_parser.parser.ast.ASTNode
     :members:
     :undoc-members:
 
@@ -126,13 +126,13 @@ AST Root (:py:class:`.Listing`)
 
 The root element of a complete AST is :py:class:`.Listing`:
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.ast.Listing
+.. autoclass:: vc2_pseudocode_parser.parser.ast.Listing
     :members:
     :exclude-members: offset, offset_end
 
 This in turn is principally made up of a list of :py:class:`.Function` nodes:
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.ast.Function
+.. autoclass:: vc2_pseudocode_parser.parser.ast.Function
     :members:
     :exclude-members: offset, offset_end
 
@@ -142,63 +142,63 @@ Statements
 AST nodes representing statements in the AST are subclasses of
 :py:class:`.Stmt`.
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.ast.Stmt
+.. autoclass:: vc2_pseudocode_parser.parser.ast.Stmt
     :members:
     :exclude-members: offset, offset_end
 
 If-else-if-else statements are defined as follows:
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.ast.IfElseStmt
+.. autoclass:: vc2_pseudocode_parser.parser.ast.IfElseStmt
     :members:
     :exclude-members: offset, offset_end
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.ast.IfBranch
+.. autoclass:: vc2_pseudocode_parser.parser.ast.IfBranch
     :members:
     :exclude-members: offset, offset_end
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.ast.ElseBranch
+.. autoclass:: vc2_pseudocode_parser.parser.ast.ElseBranch
     :members:
     :exclude-members: offset, offset_end
 
 For-each loops are defined as follows:
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.ast.ForEachStmt
+.. autoclass:: vc2_pseudocode_parser.parser.ast.ForEachStmt
     :members:
     :exclude-members: offset, offset_end
 
 For loops are defined as follows:
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.ast.ForStmt
+.. autoclass:: vc2_pseudocode_parser.parser.ast.ForStmt
     :members:
     :exclude-members: offset, offset_end
 
 While loops are defined as follows:
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.ast.WhileStmt
+.. autoclass:: vc2_pseudocode_parser.parser.ast.WhileStmt
     :members:
     :exclude-members: offset, offset_end
 
 Function call statements are defined as follows:
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.ast.FunctionCallStmt
+.. autoclass:: vc2_pseudocode_parser.parser.ast.FunctionCallStmt
     :members:
     :exclude-members: offset, offset_end
 
 Return statements are defined as follows:
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.ast.ReturnStmt
+.. autoclass:: vc2_pseudocode_parser.parser.ast.ReturnStmt
     :members:
     :exclude-members: offset, offset_end
 
 Assignment statements are defined as follows:
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.ast.AssignmentStmt
+.. autoclass:: vc2_pseudocode_parser.parser.ast.AssignmentStmt
     :members:
     :exclude-members: offset, offset_end
 
 The following assignment operators are defined:
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.operators.AssignmentOp
+.. autoclass:: vc2_pseudocode_parser.parser.operators.AssignmentOp
     :members:
     :undoc-members:
 
@@ -207,63 +207,63 @@ Expressions
 -----------
 
 AST nodes representing expressions in the AST are subclasses of
-:py:class:`~vc2_pseudocode_parser.pseudocode_parser.ast.Expr`.
+:py:class:`~vc2_pseudocode_parser.parser.ast.Expr`.
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.ast.Expr
+.. autoclass:: vc2_pseudocode_parser.parser.ast.Expr
     :members:
     :exclude-members: offset, offset_end
 
 Unary expressions are defined as follows:
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.ast.UnaryExpr
+.. autoclass:: vc2_pseudocode_parser.parser.ast.UnaryExpr
     :members:
     :exclude-members: offset, offset_end
 
 With unary operators enumerated as:
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.operators.UnaryOp
+.. autoclass:: vc2_pseudocode_parser.parser.operators.UnaryOp
     :members:
     :undoc-members:
 
 Binary expressions are defined as follows:
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.ast.BinaryExpr
+.. autoclass:: vc2_pseudocode_parser.parser.ast.BinaryExpr
     :members:
     :exclude-members: offset, offset_end
 
 With binary operators enumerated as:
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.operators.BinaryOp
+.. autoclass:: vc2_pseudocode_parser.parser.operators.BinaryOp
     :members:
     :undoc-members:
 
 Calls to functions are defined as follows:
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.ast.FunctionCallExpr
+.. autoclass:: vc2_pseudocode_parser.parser.ast.FunctionCallExpr
     :members:
     :exclude-members: offset, offset_end
 
 Uses of variables and subscripted variables are defined as follows:
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.ast.VariableExpr
+.. autoclass:: vc2_pseudocode_parser.parser.ast.VariableExpr
     :members:
     :exclude-members: offset, offset_end
 
 Value literals are defined as follows:
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.ast.BooleanExpr
+.. autoclass:: vc2_pseudocode_parser.parser.ast.BooleanExpr
     :members:
     :exclude-members: offset, offset_end
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.ast.NumberExpr
+.. autoclass:: vc2_pseudocode_parser.parser.ast.NumberExpr
     :members:
     :exclude-members: offset, offset_end
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.ast.EmptyMapExpr
+.. autoclass:: vc2_pseudocode_parser.parser.ast.EmptyMapExpr
     :members:
     :exclude-members: offset, offset_end
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.ast.LabelExpr
+.. autoclass:: vc2_pseudocode_parser.parser.ast.LabelExpr
     :members:
     :exclude-members: offset, offset_end
 
@@ -273,7 +273,7 @@ important (since evaluation order is explicit in an AST) it may be helpful in
 retaining parentheses added for human legibility when translating the
 pseudocode into other forms.
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.ast.PerenExpr
+.. autoclass:: vc2_pseudocode_parser.parser.ast.PerenExpr
     :members:
     :exclude-members: offset, offset_end
 
@@ -283,14 +283,14 @@ Variables and subscripts
 
 A :py:class:`.Variable` is defined as follows:
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.ast.Variable
+.. autoclass:: vc2_pseudocode_parser.parser.ast.Variable
     :members:
     :exclude-members: offset, offset_end
 
 Variables may be subscripted (multiple times) and this is represented by a
 nesting of :py:class:`.Subscript` objects:
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.ast.Subscript
+.. autoclass:: vc2_pseudocode_parser.parser.ast.Subscript
     :members:
     :exclude-members: offset, offset_end
 
@@ -299,7 +299,7 @@ Labels
 
 Labels are defined as follows:
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.ast.Label
+.. autoclass:: vc2_pseudocode_parser.parser.ast.Label
     :members:
     :exclude-members: offset, offset_end
 
@@ -318,11 +318,11 @@ All comments and vertical whitespace (i.e. blank lines) are captured by the
 AST. This enables these non-semantic components to be retained in language
 translations.
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.ast.Comment
+.. autoclass:: vc2_pseudocode_parser.parser.ast.Comment
     :members:
     :exclude-members: offset, offset_end
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.ast.EmptyLine
+.. autoclass:: vc2_pseudocode_parser.parser.ast.EmptyLine
     :members:
     :exclude-members: offset, offset_end
 
@@ -330,7 +330,7 @@ Simple statements are syntactically terminated by an optional comment followed
 by a newline and then a number of empty or comment-only lines. These details
 are captured by the :py:class:`.EOL` node.
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.ast.EOL
+.. autoclass:: vc2_pseudocode_parser.parser.ast.EOL
     :members:
     :exclude-members: offset, offset_end
 
@@ -376,7 +376,7 @@ The pseudocode language grammar can be described by its
     NB: The 'include' below is relative to the /docs/source directory, an
     unfortunate wrinkle in Sphinx/RST...
 
-.. include:: ../../vc2_pseudocode_parser/pseudocode_parser/grammar.peg
+.. include:: ../../vc2_pseudocode_parser/parser/grammar.peg
     :literal:
 
 
@@ -387,22 +387,22 @@ A table of operator precedence and associativities is also provided which may
 be useful for, for example, producing pretty-printed outputs (with excess
 parentheses removed).
 
-.. autodata:: vc2_pseudocode_parser.pseudocode_parser.operators.OPERATOR_PRECEDENCE_TABLE
+.. autodata:: vc2_pseudocode_parser.parser.operators.OPERATOR_PRECEDENCE_TABLE
     :annotation: = {operator: int, ...}
 
-.. autodata:: vc2_pseudocode_parser.pseudocode_parser.operators.OPERATOR_ASSOCIATIVITY_TABLE
+.. autodata:: vc2_pseudocode_parser.parser.operators.OPERATOR_ASSOCIATIVITY_TABLE
     :annotation: = {operator: associativity, ...}
 
-.. autoclass:: vc2_pseudocode_parser.pseudocode_parser.operators.Associativity
+.. autoclass:: vc2_pseudocode_parser.parser.operators.Associativity
     :members:
     :undoc-members:
 
 """
 
-from vc2_pseudocode_parser.pseudocode_parser.grammar import *
-from vc2_pseudocode_parser.pseudocode_parser.operators import *
-from vc2_pseudocode_parser.pseudocode_parser.ast import *
-from vc2_pseudocode_parser.pseudocode_parser.parser import *
+from vc2_pseudocode_parser.parser.grammar import *
+from vc2_pseudocode_parser.parser.operators import *
+from vc2_pseudocode_parser.parser.ast import *
+from vc2_pseudocode_parser.parser.parser import *
 
 # NB: These names are explicitly re-exported here because mypy in strict mode
 # does not allow implicit re-exports. The completeness of this list is tested
