@@ -90,7 +90,7 @@ def test_listing(
         ast = parse(string)
         assert [f.offset for f in ast.functions] == exp_function_offsets
         assert [
-            l.offset for l in ast.leading_empty_lines
+            lel.offset for lel in ast.leading_empty_lines
         ] == exp_leading_empty_line_offsets
     else:
         with pytest.raises(ParseError):
