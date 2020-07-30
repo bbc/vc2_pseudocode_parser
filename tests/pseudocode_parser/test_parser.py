@@ -3,7 +3,7 @@ These test simultaneously test the pseudocode grammar, parser and AST
 transfomer.
 """
 
-import pytest  # type: ignore
+import pytest
 
 from typing import Any, List, Optional, Union, cast, Sequence, Type
 
