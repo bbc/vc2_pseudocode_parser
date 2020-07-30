@@ -25,7 +25,7 @@ jobs:
         echo ::set-output name=package::$(echo dist/*.tar.gz)
     - name: Install doc dependencies
       run: |
-        python setup.py develop
+        python -m pip install -e .[docx]
         python -m pip install -r requirements-docs.txt
         sudo apt-get update -y
         sudo apt-get install -y \
