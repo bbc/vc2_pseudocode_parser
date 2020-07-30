@@ -2,7 +2,9 @@ import os
 
 from setuptools import setup, find_packages
 
-version_file = os.path.join(os.path.dirname(__file__), "vc2_pseudocode_parser", "version.py",)
+version_file = os.path.join(
+    os.path.dirname(__file__), "vc2_pseudocode_parser", "version.py",
+)
 with open(version_file, "r") as f:
     exec(f.read())
 
