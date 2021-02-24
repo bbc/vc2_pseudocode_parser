@@ -241,7 +241,10 @@ def fcs(name: str) -> FunctionCallStmt:
     "string, exp_if_else_stmt",
     [
         # Simple if
-        ("if(True): a()", IfElseStmt([IfBranch(0, BooleanExpr(0, True), [fcs("a")])]),),
+        (
+            "if(True): a()",
+            IfElseStmt([IfBranch(0, BooleanExpr(0, True), [fcs("a")])]),
+        ),
         # If-else
         (
             "if(True): a()\nelse: b()",
@@ -312,7 +315,11 @@ def fcs(name: str) -> FunctionCallStmt:
                         BooleanExpr(0, True),
                         [IfElseStmt([IfBranch(0, BooleanExpr(0, True), [fcs("a")])])],
                     ),
-                    IfBranch(0, BooleanExpr(0, False), [fcs("b")],),
+                    IfBranch(
+                        0,
+                        BooleanExpr(0, False),
+                        [fcs("b")],
+                    ),
                 ],
             ),
         ),
@@ -582,7 +589,8 @@ def test_unary_expr(spacing: str, op: UnaryOp) -> None:
     assert isinstance(expr, UnaryExpr)
 
     assert equal_ignoring_offsets_and_eol(
-        expr, UnaryExpr(0, op, LabelExpr(Label(0, "foo"))),
+        expr,
+        UnaryExpr(0, op, LabelExpr(Label(0, "foo"))),
     )
 
 
@@ -597,7 +605,12 @@ def test_binary_expr(spacing: str, op: BinaryOp) -> None:
     assert isinstance(expr, BinaryExpr)
 
     assert equal_ignoring_offsets_and_eol(
-        expr, BinaryExpr(LabelExpr(Label(0, "foo")), op, LabelExpr(Label(0, "bar")),),
+        expr,
+        BinaryExpr(
+            LabelExpr(Label(0, "foo")),
+            op,
+            LabelExpr(Label(0, "bar")),
+        ),
     )
 
 
@@ -641,7 +654,9 @@ def test_binary_operators(op: BinaryOp) -> None:
                     expr,
                     BinaryExpr(
                         BinaryExpr(
-                            LabelExpr(Label(0, "a")), op1, LabelExpr(Label(0, "b")),
+                            LabelExpr(Label(0, "a")),
+                            op1,
+                            LabelExpr(Label(0, "b")),
                         ),
                         op2,
                         LabelExpr(Label(0, "c")),
@@ -654,7 +669,9 @@ def test_binary_operators(op: BinaryOp) -> None:
                         LabelExpr(Label(0, "a")),
                         op1,
                         BinaryExpr(
-                            LabelExpr(Label(0, "b")), op2, LabelExpr(Label(0, "c")),
+                            LabelExpr(Label(0, "b")),
+                            op2,
+                            LabelExpr(Label(0, "c")),
                         ),
                     ),
                 )
@@ -672,7 +689,11 @@ def test_binary_operators(op: BinaryOp) -> None:
         assert equal_ignoring_offsets_and_eol(
             expr,
             BinaryExpr(
-                BinaryExpr(LabelExpr(Label(0, "a")), op, LabelExpr(Label(0, "b")),),
+                BinaryExpr(
+                    LabelExpr(Label(0, "a")),
+                    op,
+                    LabelExpr(Label(0, "b")),
+                ),
                 other_op,
                 LabelExpr(Label(0, "c")),
             ),
@@ -684,7 +705,11 @@ def test_binary_operators(op: BinaryOp) -> None:
             BinaryExpr(
                 LabelExpr(Label(0, "a")),
                 other_op,
-                BinaryExpr(LabelExpr(Label(0, "b")), op, LabelExpr(Label(0, "c")),),
+                BinaryExpr(
+                    LabelExpr(Label(0, "b")),
+                    op,
+                    LabelExpr(Label(0, "c")),
+                ),
             ),
         )
 
@@ -701,7 +726,11 @@ def test_binary_operators(op: BinaryOp) -> None:
             UnaryExpr(
                 0,
                 other_op,
-                BinaryExpr(LabelExpr(Label(0, "a")), op, LabelExpr(Label(0, "b")),),
+                BinaryExpr(
+                    LabelExpr(Label(0, "a")),
+                    op,
+                    LabelExpr(Label(0, "b")),
+                ),
             ),
         )
 
@@ -739,7 +768,16 @@ def test_unary_operators(op: UnaryOp) -> None:
         for op1, op2 in [(op, other_op), (other_op, op)]:
             expr = parse_expr(f"{op1.value} {op2.value} a")
             assert equal_ignoring_offsets_and_eol(
-                expr, UnaryExpr(0, op1, UnaryExpr(0, op2, LabelExpr(Label(0, "a")),),),
+                expr,
+                UnaryExpr(
+                    0,
+                    op1,
+                    UnaryExpr(
+                        0,
+                        op2,
+                        LabelExpr(Label(0, "a")),
+                    ),
+                ),
             )
 
     # Check when combined with lower-precedence binary op, this op has higher
@@ -787,7 +825,11 @@ def test_unary_operators(op: UnaryOp) -> None:
             expr = parse_expr(f"{other_op.value} {op.value} a")
             assert equal_ignoring_offsets_and_eol(
                 expr,
-                UnaryExpr(0, other_op, UnaryExpr(0, op, LabelExpr(Label(0, "a"))),),
+                UnaryExpr(
+                    0,
+                    other_op,
+                    UnaryExpr(0, op, LabelExpr(Label(0, "a"))),
+                ),
             )
 
         if other_op == UnaryOp.logical_not and op != other_op:
@@ -797,7 +839,11 @@ def test_unary_operators(op: UnaryOp) -> None:
             expr = parse_expr(f"{op.value} {other_op.value} a")
             assert equal_ignoring_offsets_and_eol(
                 expr,
-                UnaryExpr(0, op, UnaryExpr(0, other_op, LabelExpr(Label(0, "a"))),),
+                UnaryExpr(
+                    0,
+                    op,
+                    UnaryExpr(0, other_op, LabelExpr(Label(0, "a"))),
+                ),
             )
 
 
@@ -861,7 +907,11 @@ def test_function_call_expr(
                     0,
                     Subscript(
                         0,
-                        Subscript(0, Variable(0, "foo"), NumberExpr(0, 0, 1),),
+                        Subscript(
+                            0,
+                            Variable(0, "foo"),
+                            NumberExpr(0, 0, 1),
+                        ),
                         NumberExpr(0, 0, 2),
                     ),
                     NumberExpr(0, 0, 3),
@@ -1091,7 +1141,9 @@ def assert_labels_and_variable_types_correct(
             for child in children:
                 if isinstance(child, ASTNode):
                     assert_labels_and_variable_types_correct(
-                        child, exp_label_suffixes, exp_variable_suffixes,
+                        child,
+                        exp_label_suffixes,
+                        exp_variable_suffixes,
                     )
 
 
@@ -1301,7 +1353,9 @@ class TestInferLabels:
                 a_var = 123
         """
         assert_labels_and_variable_types_correct(
-            parse(source), ["_lab"], ["_var"],
+            parse(source),
+            ["_lab"],
+            ["_var"],
         )
 
     @pytest.mark.parametrize(

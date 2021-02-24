@@ -20,10 +20,16 @@ def main(*args: Any) -> int:
         """
     )
     parser.add_argument(
-        "pseudocode_file", type=FileType("r"), default=sys.stdin, nargs="?",
+        "pseudocode_file",
+        type=FileType("r"),
+        default=sys.stdin,
+        nargs="?",
     )
     parser.add_argument(
-        "python_file", type=FileType("w"), default=sys.stdout, nargs="?",
+        "python_file",
+        type=FileType("w"),
+        default=sys.stdout,
+        nargs="?",
     )
 
     args = parser.parse_args(*args)

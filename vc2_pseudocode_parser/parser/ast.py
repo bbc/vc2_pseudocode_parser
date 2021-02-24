@@ -736,7 +736,10 @@ class ToAST(ParseTreeTransformer):
     def start(self, parse_tree: Alt, children: Any) -> Listing:
         any_ws, functions, _eof = children
 
-        return Listing(cast(List[Function], functions), cast(List[EmptyLine], any_ws),)
+        return Listing(
+            cast(List[Function], functions),
+            cast(List[EmptyLine], any_ws),
+        )
 
     def stmt_block(
         self, parse_tree: Alt, children: Any
@@ -879,7 +882,10 @@ class ToAST(ParseTreeTransformer):
 
     def function_call_stmt(self, _pt: ParseTree, children: Any) -> FunctionCallStmt:
         function_call, eol = children
-        return FunctionCallStmt(cast(FunctionCallExpr, function_call), cast(EOL, eol),)
+        return FunctionCallStmt(
+            cast(FunctionCallExpr, function_call),
+            cast(EOL, eol),
+        )
 
     def return_stmt(self, _pt: ParseTree, children: Any) -> ReturnStmt:
         return_, _ws, expr, eol = children
@@ -991,7 +997,8 @@ class ToAST(ParseTreeTransformer):
         identifier, ws_and_subscripts = children
 
         variable: Union[Variable, Subscript] = Variable(
-            identifier.start, identifier.string,
+            identifier.start,
+            identifier.string,
         )
         offset_end = identifier.end
         for _ws, (expr, offset_end) in ws_and_subscripts:

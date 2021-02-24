@@ -173,7 +173,10 @@ class DocxTransformer:
     def _indent_listing_lines(self, lines: List[ListingLine]) -> List[ListingLine]:
         """Indent the code in each row."""
         return [
-            ListingLine(code=code(self._indent) + line.code, comment=line.comment,)
+            ListingLine(
+                code=code(self._indent) + line.code,
+                comment=line.comment,
+            )
             for line in lines
         ]
 

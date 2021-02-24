@@ -306,7 +306,8 @@ class PythonTransformer:
         functions = "".join(function_definitions).rstrip("\n")
 
         leading_comments = self._transform_empty_lines(
-            listing.leading_empty_lines, make_first_comment_block_into_docstring=True,
+            listing.leading_empty_lines,
+            make_first_comment_block_into_docstring=True,
         ).lstrip()
         if leading_comments:
             # Force a 3-line gap if an empty line has been left

@@ -107,7 +107,8 @@ class ListingDocument:
     def _add_run_styles_to_docx_document(self, docx_document: docx.Document) -> None:
         def make_style(run_style: RunStyle) -> docx.styles.style.BaseStyle:
             style = docx_document.styles.add_style(
-                run_style.value, docx.enum.style.WD_STYLE_TYPE.CHARACTER,
+                run_style.value,
+                docx.enum.style.WD_STYLE_TYPE.CHARACTER,
             )
             style.hidden = False
             style.quick_style = True
@@ -131,7 +132,8 @@ class ListingDocument:
 
     def _add_table_styles_to_docx_document(self, docx_document: docx.Document) -> None:
         listing_style = docx_document.styles.add_style(
-            TableStyle.pseudocode_listing.value, docx.enum.style.WD_STYLE_TYPE.TABLE,
+            TableStyle.pseudocode_listing.value,
+            docx.enum.style.WD_STYLE_TYPE.TABLE,
         )
         listing_style.hidden = False
         listing_style.quick_style = True

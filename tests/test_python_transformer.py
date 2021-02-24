@@ -153,10 +153,14 @@ class TestExprAddOne:
 
     def test_adding_decimal_number(self) -> None:
         e = BinaryExpr(
-            NumberExpr(10, 11, 0, 10), BinaryOp("+"), NumberExpr(100, 103, 123, 10),
+            NumberExpr(10, 11, 0, 10),
+            BinaryOp("+"),
+            NumberExpr(100, 103, 123, 10),
         )
         assert expr_add_one(e) == BinaryExpr(
-            NumberExpr(10, 11, 0, 10), BinaryOp("+"), NumberExpr(100, 103, 124, 10),
+            NumberExpr(10, 11, 0, 10),
+            BinaryOp("+"),
+            NumberExpr(100, 103, 124, 10),
         )
 
     @pytest.mark.parametrize("display_base", [2, 16])
@@ -167,20 +171,28 @@ class TestExprAddOne:
             NumberExpr(100, 103, 123, display_base),
         )
         assert expr_add_one(e) == BinaryExpr(
-            e, BinaryOp("+"), NumberExpr(10, 10, 1, 10),
+            e,
+            BinaryOp("+"),
+            NumberExpr(10, 10, 1, 10),
         )
 
     def test_subtracting_decimal_number(self) -> None:
         e = BinaryExpr(
-            NumberExpr(10, 11, 0, 10), BinaryOp("-"), NumberExpr(100, 103, 123, 10),
+            NumberExpr(10, 11, 0, 10),
+            BinaryOp("-"),
+            NumberExpr(100, 103, 123, 10),
         )
         assert expr_add_one(e) == BinaryExpr(
-            NumberExpr(10, 11, 0, 10), BinaryOp("-"), NumberExpr(100, 103, 122, 10),
+            NumberExpr(10, 11, 0, 10),
+            BinaryOp("-"),
+            NumberExpr(100, 103, 122, 10),
         )
 
     def test_subtracting_one(self) -> None:
         e = BinaryExpr(
-            NumberExpr(10, 11, 0, 10), BinaryOp("-"), NumberExpr(100, 101, 1, 10),
+            NumberExpr(10, 11, 0, 10),
+            BinaryOp("-"),
+            NumberExpr(100, 101, 1, 10),
         )
         assert expr_add_one(e) == NumberExpr(10, 11, 0, 10)
 
@@ -192,21 +204,27 @@ class TestExprAddOne:
             NumberExpr(100, 103, 123, display_base),
         )
         assert expr_add_one(e) == BinaryExpr(
-            e, BinaryOp("+"), NumberExpr(10, 10, 1, 10),
+            e,
+            BinaryOp("+"),
+            NumberExpr(10, 10, 1, 10),
         )
 
     @pytest.mark.parametrize(
         "expr",
         [
             BinaryExpr(
-                NumberExpr(10, 13, 999, 10), BinaryOp("*"), NumberExpr(20, 12, 2, 10),
+                NumberExpr(10, 13, 999, 10),
+                BinaryOp("*"),
+                NumberExpr(20, 12, 2, 10),
             ),
             FunctionCallExpr(10, 20, "foo", []),
         ],
     )
     def test_other_values(self, expr: Expr) -> None:
         assert expr_add_one(expr) == BinaryExpr(
-            expr, BinaryOp("+"), NumberExpr(10, 10, 1, 10),
+            expr,
+            BinaryOp("+"),
+            NumberExpr(10, 10, 1, 10),
         )
 
 
