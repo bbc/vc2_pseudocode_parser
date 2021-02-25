@@ -18,11 +18,11 @@ setup(
     url="https://github.com/bbc/vc2_pseudocode_parser",
     author="BBC R&D",
     description="Parser and translator for the pseudocode language used in SMPTE ST 2042-1 (VC-2) standards documents.",
-    license="GPLv2",
+    license="GPL-3.0-only",
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
-        "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
+        "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Operating System :: POSIX :: Linux",
         "Operating System :: Microsoft :: Windows",
         "Operating System :: MacOS",

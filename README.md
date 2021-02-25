@@ -104,3 +104,10 @@ informal thread of work to see how enhanced machine readability of pseudocode
 specifications may prove valuable to implementers and specification authors
 alike. Contact [Jonathan Heathcote](mailto:jonathan.heathcote@bbc.co.uk) or
 [John Fletcher](mailto:john.fletcher@bbc.co.uk) for more information.
+
+
+License
+=======
+
+This software is distributed under the [GNU General Public License version
+3](./LICENSE.txt), &copy; BBC 2021.

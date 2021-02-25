@@ -12,8 +12,8 @@ sys.path.insert(0, os.path.abspath("../.."))
 # -- Project information -----------------------------------------------------
 
 project = "SMPTE VC-2 Pseudocode Parsing Software"
-copyright = "2020, SMPTE"
-author = "SMPTE"
+copyright = "2021, BBC"
+author = "BBC"
 
 from vc2_pseudocode_parser import __version__ as version
 
