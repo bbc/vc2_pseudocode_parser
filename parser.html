@@ -1,0 +1,1234 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pseudocode Parser &#8212; SMPTE VC-2 Pseudocode Parsing Software 0.2.1 documentation</title>
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/nature.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Pseudocode to Python translation" href="python_transformer.html" />
+    <link rel="prev" title="&lt;no title&gt;" href="bibliography.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="python_transformer.html" title="Pseudocode to Python translation"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="bibliography.html" title="&lt;no title&gt;"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">SMPTE VC-2 Pseudocode Parsing Software 0.2.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Pseudocode Parser</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-vc2_pseudocode_parser.parser">
+<span id="pseudocode-parser"></span><span id="parser"></span><h1>Pseudocode Parser<a class="headerlink" href="#module-vc2_pseudocode_parser.parser" title="Permalink to this headline">¶</a></h1>
+<p>The <a class="reference internal" href="#module-vc2_pseudocode_parser.parser" title="vc2_pseudocode_parser.parser"><code class="xref py py-mod docutils literal notranslate"><span class="pre">vc2_pseudocode_parser.parser</span></code></a> module contains a parser and
+associated Abstract Syntax Tree (AST) representation for the pseudocode
+language used within the VC-2 specifications <a class="reference internal" href="bibliography.html#vc2" id="id1"><span>[VC2]</span></a>.</p>
+<p>A quick-start example illustrating much of the pseudocode syntax and basic
+usage of this module is given below:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">vc2_pseudocode_parser.parser</span> <span class="kn">import</span> <span class="n">parse</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">source</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="gp">... </span><span class="s1">    some_function(arg1, arg2, arg3):</span>
+<span class="gp">... </span><span class="s1">        # Assignments</span>
+<span class="gp">... </span><span class="s1">        hex_foo = 0xF00</span>
+<span class="gp">... </span><span class="s1">        sum = arg1 + arg2 + arg3</span>
+<span class="gp">...</span><span class="s1"></span>
+<span class="gp">... </span><span class="s1">        # If statements</span>
+<span class="gp">... </span><span class="s1">        if (sum &gt; 0):</span>
+<span class="gp">... </span><span class="s1">            sign = 1</span>
+<span class="gp">... </span><span class="s1">        else if (sum &lt; 0):</span>
+<span class="gp">... </span><span class="s1">            sign = -1</span>
+<span class="gp">... </span><span class="s1">        else:</span>
+<span class="gp">... </span><span class="s1">            sign = 0</span>
+<span class="gp">...</span><span class="s1"></span>
+<span class="gp">... </span><span class="s1">        # For-each: loop over fixed set of values</span>
+<span class="gp">... </span><span class="s1">        sum2 = 0</span>
+<span class="gp">... </span><span class="s1">        for each value in arg1, arg2, arg3:</span>
+<span class="gp">... </span><span class="s1">            sum2 += value</span>
+<span class="gp">...</span><span class="s1"></span>
+<span class="gp">... </span><span class="s1">        # For: loop over range of integers</span>
+<span class="gp">... </span><span class="s1">        sum_1_to_100 = 0</span>
+<span class="gp">... </span><span class="s1">        for n = 1 to 100:</span>
+<span class="gp">... </span><span class="s1">            sum_1_to_100 += n</span>
+<span class="gp">...</span><span class="s1"></span>
+<span class="gp">... </span><span class="s1">        # While loop</span>
+<span class="gp">... </span><span class="s1">        count = 0</span>
+<span class="gp">... </span><span class="s1">        while (sum &gt; 0):</span>
+<span class="gp">... </span><span class="s1">            sum //= 2</span>
+<span class="gp">... </span><span class="s1">            count += 1</span>
+<span class="gp">...</span><span class="s1"></span>
+<span class="gp">... </span><span class="s1">        # Maps (like Python&#39;s dictionaries</span>
+<span class="gp">... </span><span class="s1">        map = </span><span class="si">{}</span><span class="s1"></span>
+<span class="gp">...</span><span class="s1"></span>
+<span class="gp">... </span><span class="s1">        # Maps subscripted with labels</span>
+<span class="gp">... </span><span class="s1">        map[foo] = 123</span>
+<span class="gp">... </span><span class="s1">        map[bar] = 321</span>
+<span class="gp">...</span><span class="s1"></span>
+<span class="gp">... </span><span class="s1">        # Labels are first-class values (and are defined by their first use)</span>
+<span class="gp">... </span><span class="s1">        label = baz</span>
+<span class="gp">... </span><span class="s1">        map[label] = 999</span>
+<span class="gp">...</span><span class="s1"></span>
+<span class="gp">... </span><span class="s1">        # Function calls</span>
+<span class="gp">... </span><span class="s1">        foo(map)</span>
+<span class="gp">...</span><span class="s1"></span>
+<span class="gp">... </span><span class="s1">        # Return from functions</span>
+<span class="gp">... </span><span class="s1">        return count</span>
+<span class="gp">... </span><span class="s1">&#39;&#39;&#39;</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ast</span> <span class="o">=</span> <span class="n">parse</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">ast</span><span class="o">.</span><span class="n">functions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">name</span>
+<span class="go">&#39;some_function&#39;</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">assignment</span> <span class="o">=</span> <span class="n">ast</span><span class="o">.</span><span class="n">functions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">body</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">assignment</span><span class="o">.</span><span class="n">variable</span>
+<span class="go">Variable(offset=68, name=&#39;hex_foo&#39;)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">assignment</span><span class="o">.</span><span class="n">value</span>
+<span class="go">NumberExpr(offset=78, offset_end=83, value=3840, display_base=16, display_digits=3)</span>
+</pre></div>
+</div>
+<div class="section" id="id2">
+<h2>Parser<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h2>
+<p>A pseudocode snippet may be parsed into an Abstract Syntax Tree (AST) using the
+<a class="reference internal" href="#vc2_pseudocode_parser.parser.parse" title="vc2_pseudocode_parser.parser.parse"><code class="xref py py-func docutils literal notranslate"><span class="pre">parse()</span></code></a> function:</p>
+<dl class="py function">
+<dt id="vc2_pseudocode_parser.parser.parse">
+<code class="sig-name descname"><span class="pre">parse</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">string</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.parse" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parse a pseudocode listing into an abstract syntax tree
+(<a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Listing" title="vc2_pseudocode_parser.parser.ast.Listing"><code class="xref py py-class docutils literal notranslate"><span class="pre">Listing</span></code></a>).</p>
+<p>May raise a <a class="reference internal" href="#vc2_pseudocode_parser.parser.ParseError" title="vc2_pseudocode_parser.parser.ParseError"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ParseError</span></code></a> or
+<a class="reference internal" href="#vc2_pseudocode_parser.parser.ASTConstructionError" title="vc2_pseudocode_parser.parser.ASTConstructionError"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ASTConstructionError</span></code></a> exception on failure.</p>
+</dd></dl>
+
+<p>Parsing failures will result of one of the exceptions below being raised. In
+all cases, the <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a> representation of these errors produces a
+user-friendly description of the problem.</p>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">vc2_pseudocode_parser.parser</span> <span class="kn">import</span> <span class="n">ParseError</span><span class="p">,</span> <span class="n">ASTConstructionError</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="k">try</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">ast</span> <span class="o">=</span> <span class="n">parse</span><span class="p">(</span><span class="s2">&quot;foo(): return (a + 3&quot;</span><span class="p">)</span>
+<span class="gp">... </span><span class="k">except</span> <span class="p">(</span><span class="n">ParseError</span><span class="p">,</span> <span class="n">ASTConstructionError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+<span class="go">At line 1 column 21:</span>
+<span class="go">    foo(): return (a + 3</span>
+<span class="go">                        ^</span>
+<span class="go">Expected &#39;)&#39; or &lt;operator&gt;</span>
+</pre></div>
+</div>
+<dl class="py exception">
+<dt id="vc2_pseudocode_parser.parser.ParseError">
+<em class="property"><span class="pre">exception</span> </em><code class="sig-name descname"><span class="pre">ParseError</span></code><a class="headerlink" href="#vc2_pseudocode_parser.parser.ParseError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Re-exported from <a class="reference external" href="https://peggie.readthedocs.io/en/latest/index.html#peggie.ParseError" title="(in Peggie v0.2.1)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">peggie.ParseError</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt id="vc2_pseudocode_parser.parser.ASTConstructionError">
+<em class="property"><span class="pre">exception</span> </em><code class="sig-name descname"><span class="pre">ASTConstructionError</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">line</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">snippet</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ASTConstructionError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Exceptions thrown during construction of an AST.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt id="vc2_pseudocode_parser.parser.LabelUsedAsVariableNameError">
+<em class="property"><span class="pre">exception</span> </em><code class="sig-name descname"><span class="pre">LabelUsedAsVariableNameError</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">line</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">snippet</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">variable_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.LabelUsedAsVariableNameError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">vc2_pseudocode_parser.parser.ast.ASTConstructionError</span></code></p>
+<p>Thrown when a name previously used as a label is assigned to like a
+variable.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt id="vc2_pseudocode_parser.parser.CannotSubscriptLabelError">
+<em class="property"><span class="pre">exception</span> </em><code class="sig-name descname"><span class="pre">CannotSubscriptLabelError</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">line</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">column</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">snippet</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.CannotSubscriptLabelError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">vc2_pseudocode_parser.parser.ast.ASTConstructionError</span></code></p>
+<p>Thrown when name which has previously used as a label is subscripted like a
+variable.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="abstract-syntax-tree-ast">
+<h2>Abstract Syntax Tree (AST)<a class="headerlink" href="#abstract-syntax-tree-ast" title="Permalink to this headline">¶</a></h2>
+<p>The parser generates a fairly detailed AST containing both semantic and some
+non-semantic features of the source such as explicit uses of parentheses,
+comments and vertical whitespace. Nodes in the AST also include character
+indices of the corresponding source code enabling the construction of helpful
+error messages.</p>
+<p>Every node in the AST is a subclass of the <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.ASTNode" title="vc2_pseudocode_parser.parser.ast.ASTNode"><code class="xref py py-class docutils literal notranslate"><span class="pre">ASTNode</span></code></a> base class:</p>
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.ast.ASTNode">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">ASTNode</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset_end</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.ASTNode" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.ASTNode.offset">
+<code class="sig-name descname"><span class="pre">offset</span></code><em class="property"><span class="pre">:</span> <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><span class="pre">int</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.ASTNode.offset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Index of first character in the source related to this node.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.ASTNode.offset_end">
+<code class="sig-name descname"><span class="pre">offset_end</span></code><em class="property"><span class="pre">:</span> <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><span class="pre">int</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.ASTNode.offset_end" title="Permalink to this definition">¶</a></dt>
+<dd><p>Index of the character after the final character related to this node.</p>
+</dd></dl>
+
+</dd></dl>
+
+<div class="section" id="ast-root-listing">
+<h3>AST Root (<a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Listing" title="vc2_pseudocode_parser.parser.ast.Listing"><code class="xref py py-class docutils literal notranslate"><span class="pre">Listing</span></code></a>)<a class="headerlink" href="#ast-root-listing" title="Permalink to this headline">¶</a></h3>
+<p>The root element of a complete AST is <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Listing" title="vc2_pseudocode_parser.parser.ast.Listing"><code class="xref py py-class docutils literal notranslate"><span class="pre">Listing</span></code></a>:</p>
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.ast.Listing">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">Listing</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="pre">functions</span></em>, <em class="sig-param"><span class="pre">leading_empty_lines=&lt;factory&gt;</span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.Listing" title="Permalink to this definition">¶</a></dt>
+<dd><p>The root of a pseudocode AST.</p>
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.Listing.functions">
+<code class="sig-name descname"><span class="pre">functions</span></code><em class="property"><span class="pre">:</span> <span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Function" title="vc2_pseudocode_parser.parser.ast.Function"><span class="pre">vc2_pseudocode_parser.parser.ast.Function</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.Listing.functions" title="Permalink to this definition">¶</a></dt>
+<dd><p>List of <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Function" title="vc2_pseudocode_parser.parser.ast.Function"><code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code></a> trees for each function defined in the tree.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.Listing.leading_empty_lines">
+<code class="sig-name descname"><span class="pre">leading_empty_lines</span></code><em class="property"><span class="pre">:</span> <span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EmptyLine" title="vc2_pseudocode_parser.parser.ast.EmptyLine"><span class="pre">vc2_pseudocode_parser.parser.ast.EmptyLine</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.Listing.leading_empty_lines" title="Permalink to this definition">¶</a></dt>
+<dd><p>List of <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EmptyLine" title="vc2_pseudocode_parser.parser.ast.EmptyLine"><code class="xref py py-class docutils literal notranslate"><span class="pre">EmptyLine</span></code></a> trees relating to empty (or comment-only)
+lines at the start of the source listing.</p>
+</dd></dl>
+
+</dd></dl>
+
+<p>This in turn is principally made up of a list of <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Function" title="vc2_pseudocode_parser.parser.ast.Function"><code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code></a> nodes:</p>
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.ast.Function">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">Function</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arguments</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">body</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.Function" title="Permalink to this definition">¶</a></dt>
+<dd><p>A function definition:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&lt;</span><span class="n">arguments</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">arguments</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;...&gt;</span><span class="p">):</span> <span class="o">&lt;</span><span class="n">eol</span><span class="o">&gt;</span>
+    <span class="o">&lt;</span><span class="n">body</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.Function.name">
+<code class="sig-name descname"><span class="pre">name</span></code><em class="property"><span class="pre">:</span> <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><span class="pre">str</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.Function.name" title="Permalink to this definition">¶</a></dt>
+<dd><p>The name of the function.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.Function.arguments">
+<code class="sig-name descname"><span class="pre">arguments</span></code><em class="property"><span class="pre">:</span> <span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Variable" title="vc2_pseudocode_parser.parser.ast.Variable"><span class="pre">vc2_pseudocode_parser.parser.ast.Variable</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.Function.arguments" title="Permalink to this definition">¶</a></dt>
+<dd><p>The <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Variable" title="vc2_pseudocode_parser.parser.ast.Variable"><code class="xref py py-class docutils literal notranslate"><span class="pre">Variable</span></code></a> objects corresponding with the arguments to this
+function.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.Function.body">
+<code class="sig-name descname"><span class="pre">body</span></code><em class="property"><span class="pre">:</span> <span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Stmt" title="vc2_pseudocode_parser.parser.ast.Stmt"><span class="pre">vc2_pseudocode_parser.parser.ast.Stmt</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.Function.body" title="Permalink to this definition">¶</a></dt>
+<dd><p>The list of <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Stmt" title="vc2_pseudocode_parser.parser.ast.Stmt"><code class="xref py py-class docutils literal notranslate"><span class="pre">Stmt</span></code></a> which make up this function.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.Function.eol">
+<code class="sig-name descname"><span class="pre">eol</span></code><em class="property"><span class="pre">:</span> <span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EOL" title="vc2_pseudocode_parser.parser.ast.EOL"><span class="pre">vc2_pseudocode_parser.parser.ast.EOL</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"> <span class="pre">=</span> <span class="pre">None</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.Function.eol" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EOL" title="vc2_pseudocode_parser.parser.ast.EOL"><code class="xref py py-class docutils literal notranslate"><span class="pre">EOL</span></code></a> at the end of the function heading.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="statements">
+<h3>Statements<a class="headerlink" href="#statements" title="Permalink to this headline">¶</a></h3>
+<p>AST nodes representing statements in the AST are subclasses of
+<a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Stmt" title="vc2_pseudocode_parser.parser.ast.Stmt"><code class="xref py py-class docutils literal notranslate"><span class="pre">Stmt</span></code></a>.</p>
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.ast.Stmt">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">Stmt</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset_end</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.Stmt" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base-class for all statement AST nodes.</p>
+</dd></dl>
+
+<p>If-else-if-else statements are defined as follows:</p>
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.ast.IfElseStmt">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">IfElseStmt</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">if_branches</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">else_branch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.IfElseStmt" title="Permalink to this definition">¶</a></dt>
+<dd><p>An <code class="docutils literal notranslate"><span class="pre">if</span></code> statement with an arbitrary number of <code class="docutils literal notranslate"><span class="pre">else</span> <span class="pre">if</span></code> clauses and
+optional <code class="docutils literal notranslate"><span class="pre">else</span></code> clause.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">if</span></code> statement is broken as illustrated by the following example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="p">(</span><span class="n">condition0</span><span class="p">):</span>       <span class="c1"># \ if_branches[0]</span>
+    <span class="n">body0</span>              <span class="c1"># /</span>
+<span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">condition1</span><span class="p">):</span>  <span class="c1"># \ if_branches[1]</span>
+    <span class="n">body1</span>              <span class="c1"># /</span>
+<span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">condition2</span><span class="p">):</span>  <span class="c1"># \ if_branches[2]</span>
+    <span class="n">body2</span>              <span class="c1"># /</span>
+<span class="k">else</span><span class="p">:</span>                  <span class="c1"># \ else_branch</span>
+    <span class="n">body3</span>              <span class="c1"># /</span>
+</pre></div>
+</div>
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.IfElseStmt.if_branches">
+<code class="sig-name descname"><span class="pre">if_branches</span></code><em class="property"><span class="pre">:</span> <span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.IfBranch" title="vc2_pseudocode_parser.parser.ast.IfBranch"><span class="pre">vc2_pseudocode_parser.parser.ast.IfBranch</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.IfElseStmt.if_branches" title="Permalink to this definition">¶</a></dt>
+<dd><p>The opening <code class="docutils literal notranslate"><span class="pre">if</span></code> clause followed by any <code class="docutils literal notranslate"><span class="pre">else</span> <span class="pre">if</span></code> clauses are
+represented as a series of <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.IfBranch" title="vc2_pseudocode_parser.parser.ast.IfBranch"><code class="xref py py-class docutils literal notranslate"><span class="pre">IfBranch</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.IfElseStmt.else_branch">
+<code class="sig-name descname"><span class="pre">else_branch</span></code><em class="property"><span class="pre">:</span> <span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.ElseBranch" title="vc2_pseudocode_parser.parser.ast.ElseBranch"><span class="pre">vc2_pseudocode_parser.parser.ast.ElseBranch</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"> <span class="pre">=</span> <span class="pre">None</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.IfElseStmt.else_branch" title="Permalink to this definition">¶</a></dt>
+<dd><p>If an <code class="docutils literal notranslate"><span class="pre">else</span></code> clause is present, a <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.ElseBranch" title="vc2_pseudocode_parser.parser.ast.ElseBranch"><code class="xref py py-class docutils literal notranslate"><span class="pre">ElseBranch</span></code></a> giving its
+contents.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.ast.IfBranch">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">IfBranch</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">condition</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">body</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.IfBranch" title="Permalink to this definition">¶</a></dt>
+<dd><p>An <code class="docutils literal notranslate"><span class="pre">if</span></code> or <code class="docutils literal notranslate"><span class="pre">else</span> <span class="pre">if</span></code> clause in an if-else-if-else statement:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="p">(</span><span class="o">&lt;</span><span class="n">condition</span><span class="o">&gt;</span><span class="p">):</span> <span class="o">&lt;</span><span class="n">eol</span><span class="o">&gt;</span>
+    <span class="o">&lt;</span><span class="n">body</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>Or:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="o">&lt;</span><span class="n">condition</span><span class="o">&gt;</span><span class="p">):</span> <span class="o">&lt;</span><span class="n">eol</span><span class="o">&gt;</span>
+    <span class="o">&lt;</span><span class="n">body</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.IfBranch.condition">
+<code class="sig-name descname"><span class="pre">condition</span></code><em class="property"><span class="pre">:</span> <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Expr" title="vc2_pseudocode_parser.parser.ast.Expr"><span class="pre">vc2_pseudocode_parser.parser.ast.Expr</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.IfBranch.condition" title="Permalink to this definition">¶</a></dt>
+<dd><p>The <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Expr" title="vc2_pseudocode_parser.parser.ast.Expr"><code class="xref py py-class docutils literal notranslate"><span class="pre">Expr</span></code></a> representing the condition for the branch condition.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.IfBranch.body">
+<code class="sig-name descname"><span class="pre">body</span></code><em class="property"><span class="pre">:</span> <span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Stmt" title="vc2_pseudocode_parser.parser.ast.Stmt"><span class="pre">vc2_pseudocode_parser.parser.ast.Stmt</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.IfBranch.body" title="Permalink to this definition">¶</a></dt>
+<dd><p>The list of <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Stmt" title="vc2_pseudocode_parser.parser.ast.Stmt"><code class="xref py py-class docutils literal notranslate"><span class="pre">Stmt</span></code></a> to execute when the condition is True.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.IfBranch.eol">
+<code class="sig-name descname"><span class="pre">eol</span></code><em class="property"><span class="pre">:</span> <span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EOL" title="vc2_pseudocode_parser.parser.ast.EOL"><span class="pre">vc2_pseudocode_parser.parser.ast.EOL</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"> <span class="pre">=</span> <span class="pre">None</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.IfBranch.eol" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EOL" title="vc2_pseudocode_parser.parser.ast.EOL"><code class="xref py py-class docutils literal notranslate"><span class="pre">EOL</span></code></a> following the <code class="docutils literal notranslate"><span class="pre">if</span></code> or <code class="docutils literal notranslate"><span class="pre">else</span> <span class="pre">if</span></code> clause heading.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.ast.ElseBranch">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">ElseBranch</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">body</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.ElseBranch" title="Permalink to this definition">¶</a></dt>
+<dd><p>An <code class="docutils literal notranslate"><span class="pre">else</span></code> clause in an if-else-if-else statement:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">else</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">eol</span><span class="o">&gt;</span>
+    <span class="o">&lt;</span><span class="n">body</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.ElseBranch.body">
+<code class="sig-name descname"><span class="pre">body</span></code><em class="property"><span class="pre">:</span> <span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Stmt" title="vc2_pseudocode_parser.parser.ast.Stmt"><span class="pre">vc2_pseudocode_parser.parser.ast.Stmt</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.ElseBranch.body" title="Permalink to this definition">¶</a></dt>
+<dd><p>The list of <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Stmt" title="vc2_pseudocode_parser.parser.ast.Stmt"><code class="xref py py-class docutils literal notranslate"><span class="pre">Stmt</span></code></a> to execute when the else branch is reached.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.ElseBranch.eol">
+<code class="sig-name descname"><span class="pre">eol</span></code><em class="property"><span class="pre">:</span> <span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EOL" title="vc2_pseudocode_parser.parser.ast.EOL"><span class="pre">vc2_pseudocode_parser.parser.ast.EOL</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"> <span class="pre">=</span> <span class="pre">None</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.ElseBranch.eol" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EOL" title="vc2_pseudocode_parser.parser.ast.EOL"><code class="xref py py-class docutils literal notranslate"><span class="pre">EOL</span></code></a> following the <code class="docutils literal notranslate"><span class="pre">else</span></code> clause heading.</p>
+</dd></dl>
+
+</dd></dl>
+
+<p>For-each loops are defined as follows:</p>
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.ast.ForEachStmt">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">ForEachStmt</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">variable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">body</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.ForEachStmt" title="Permalink to this definition">¶</a></dt>
+<dd><p>A <code class="docutils literal notranslate"><span class="pre">for</span> <span class="pre">each</span></code> loop:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">each</span> <span class="o">&lt;</span><span class="n">variable</span><span class="o">&gt;</span> <span class="ow">in</span> <span class="o">&lt;</span><span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">values</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;...&gt;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">eol</span><span class="o">&gt;</span>
+    <span class="o">&lt;</span><span class="n">body</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.ForEachStmt.variable">
+<code class="sig-name descname"><span class="pre">variable</span></code><em class="property"><span class="pre">:</span> <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Variable" title="vc2_pseudocode_parser.parser.ast.Variable"><span class="pre">vc2_pseudocode_parser.parser.ast.Variable</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.ForEachStmt.variable" title="Permalink to this definition">¶</a></dt>
+<dd><p>The loop <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Variable" title="vc2_pseudocode_parser.parser.ast.Variable"><code class="xref py py-class docutils literal notranslate"><span class="pre">Variable</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.ForEachStmt.values">
+<code class="sig-name descname"><span class="pre">values</span></code><em class="property"><span class="pre">:</span> <span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Expr" title="vc2_pseudocode_parser.parser.ast.Expr"><span class="pre">vc2_pseudocode_parser.parser.ast.Expr</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.ForEachStmt.values" title="Permalink to this definition">¶</a></dt>
+<dd><p>The <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Expr" title="vc2_pseudocode_parser.parser.ast.Expr"><code class="xref py py-class docutils literal notranslate"><span class="pre">Expr</span></code></a> giving the set of values the loop will iterate over.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.ForEachStmt.body">
+<code class="sig-name descname"><span class="pre">body</span></code><em class="property"><span class="pre">:</span> <span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Stmt" title="vc2_pseudocode_parser.parser.ast.Stmt"><span class="pre">vc2_pseudocode_parser.parser.ast.Stmt</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.ForEachStmt.body" title="Permalink to this definition">¶</a></dt>
+<dd><p>The list of <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Stmt" title="vc2_pseudocode_parser.parser.ast.Stmt"><code class="xref py py-class docutils literal notranslate"><span class="pre">Stmt</span></code></a> to execute in each iteration.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.ForEachStmt.eol">
+<code class="sig-name descname"><span class="pre">eol</span></code><em class="property"><span class="pre">:</span> <span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EOL" title="vc2_pseudocode_parser.parser.ast.EOL"><span class="pre">vc2_pseudocode_parser.parser.ast.EOL</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"> <span class="pre">=</span> <span class="pre">None</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.ForEachStmt.eol" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EOL" title="vc2_pseudocode_parser.parser.ast.EOL"><code class="xref py py-class docutils literal notranslate"><span class="pre">EOL</span></code></a> following the <code class="docutils literal notranslate"><span class="pre">for</span> <span class="pre">each</span></code> heading.</p>
+</dd></dl>
+
+</dd></dl>
+
+<p>For loops are defined as follows:</p>
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.ast.ForStmt">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">ForStmt</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">variable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">body</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.ForStmt" title="Permalink to this definition">¶</a></dt>
+<dd><p>A <code class="docutils literal notranslate"><span class="pre">for</span></code> loop:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="o">&lt;</span><span class="n">variable</span><span class="o">&gt;</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">start</span><span class="o">&gt;</span> <span class="n">to</span> <span class="o">&lt;</span><span class="n">end</span><span class="o">&gt;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">eol</span><span class="o">&gt;</span>
+    <span class="o">&lt;</span><span class="n">body</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.ForStmt.variable">
+<code class="sig-name descname"><span class="pre">variable</span></code><em class="property"><span class="pre">:</span> <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Variable" title="vc2_pseudocode_parser.parser.ast.Variable"><span class="pre">vc2_pseudocode_parser.parser.ast.Variable</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.ForStmt.variable" title="Permalink to this definition">¶</a></dt>
+<dd><p>The loop <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Variable" title="vc2_pseudocode_parser.parser.ast.Variable"><code class="xref py py-class docutils literal notranslate"><span class="pre">Variable</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.ForStmt.start">
+<code class="sig-name descname"><span class="pre">start</span></code><em class="property"><span class="pre">:</span> <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Expr" title="vc2_pseudocode_parser.parser.ast.Expr"><span class="pre">vc2_pseudocode_parser.parser.ast.Expr</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.ForStmt.start" title="Permalink to this definition">¶</a></dt>
+<dd><p>The <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Expr" title="vc2_pseudocode_parser.parser.ast.Expr"><code class="xref py py-class docutils literal notranslate"><span class="pre">Expr</span></code></a> giving the loop starting value.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.ForStmt.end">
+<code class="sig-name descname"><span class="pre">end</span></code><em class="property"><span class="pre">:</span> <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Expr" title="vc2_pseudocode_parser.parser.ast.Expr"><span class="pre">vc2_pseudocode_parser.parser.ast.Expr</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.ForStmt.end" title="Permalink to this definition">¶</a></dt>
+<dd><p>The <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Expr" title="vc2_pseudocode_parser.parser.ast.Expr"><code class="xref py py-class docutils literal notranslate"><span class="pre">Expr</span></code></a> giving the (inclusive) loop ending value.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.ForStmt.body">
+<code class="sig-name descname"><span class="pre">body</span></code><em class="property"><span class="pre">:</span> <span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Stmt" title="vc2_pseudocode_parser.parser.ast.Stmt"><span class="pre">vc2_pseudocode_parser.parser.ast.Stmt</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.ForStmt.body" title="Permalink to this definition">¶</a></dt>
+<dd><p>The list of <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Stmt" title="vc2_pseudocode_parser.parser.ast.Stmt"><code class="xref py py-class docutils literal notranslate"><span class="pre">Stmt</span></code></a> to execute in each iteration.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.ForStmt.eol">
+<code class="sig-name descname"><span class="pre">eol</span></code><em class="property"><span class="pre">:</span> <span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EOL" title="vc2_pseudocode_parser.parser.ast.EOL"><span class="pre">vc2_pseudocode_parser.parser.ast.EOL</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"> <span class="pre">=</span> <span class="pre">None</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.ForStmt.eol" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EOL" title="vc2_pseudocode_parser.parser.ast.EOL"><code class="xref py py-class docutils literal notranslate"><span class="pre">EOL</span></code></a> following the <code class="docutils literal notranslate"><span class="pre">for</span></code> heading.</p>
+</dd></dl>
+
+</dd></dl>
+
+<p>While loops are defined as follows:</p>
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.ast.WhileStmt">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">WhileStmt</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">condition</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">body</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.WhileStmt" title="Permalink to this definition">¶</a></dt>
+<dd><p>A <code class="docutils literal notranslate"><span class="pre">while</span></code> loop:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">while</span> <span class="p">(</span><span class="o">&lt;</span><span class="n">condition</span><span class="o">&gt;</span><span class="p">):</span> <span class="o">&lt;</span><span class="n">eol</span><span class="o">&gt;</span>
+    <span class="o">&lt;</span><span class="n">body</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.WhileStmt.condition">
+<code class="sig-name descname"><span class="pre">condition</span></code><em class="property"><span class="pre">:</span> <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Expr" title="vc2_pseudocode_parser.parser.ast.Expr"><span class="pre">vc2_pseudocode_parser.parser.ast.Expr</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.WhileStmt.condition" title="Permalink to this definition">¶</a></dt>
+<dd><p>The <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Expr" title="vc2_pseudocode_parser.parser.ast.Expr"><code class="xref py py-class docutils literal notranslate"><span class="pre">Expr</span></code></a> representing the loop condition.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.WhileStmt.body">
+<code class="sig-name descname"><span class="pre">body</span></code><em class="property"><span class="pre">:</span> <span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Stmt" title="vc2_pseudocode_parser.parser.ast.Stmt"><span class="pre">vc2_pseudocode_parser.parser.ast.Stmt</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.WhileStmt.body" title="Permalink to this definition">¶</a></dt>
+<dd><p>The list of <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Stmt" title="vc2_pseudocode_parser.parser.ast.Stmt"><code class="xref py py-class docutils literal notranslate"><span class="pre">Stmt</span></code></a> to execute in each iteration.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.WhileStmt.eol">
+<code class="sig-name descname"><span class="pre">eol</span></code><em class="property"><span class="pre">:</span> <span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EOL" title="vc2_pseudocode_parser.parser.ast.EOL"><span class="pre">vc2_pseudocode_parser.parser.ast.EOL</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"> <span class="pre">=</span> <span class="pre">None</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.WhileStmt.eol" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EOL" title="vc2_pseudocode_parser.parser.ast.EOL"><code class="xref py py-class docutils literal notranslate"><span class="pre">EOL</span></code></a> following the <code class="docutils literal notranslate"><span class="pre">while</span></code> heading.</p>
+</dd></dl>
+
+</dd></dl>
+
+<p>Function call statements are defined as follows:</p>
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.ast.FunctionCallStmt">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">FunctionCallStmt</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">call</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eol</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.FunctionCallStmt" title="Permalink to this definition">¶</a></dt>
+<dd><p>A statement which represents a call to a function.</p>
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.FunctionCallStmt.call">
+<code class="sig-name descname"><span class="pre">call</span></code><em class="property"><span class="pre">:</span> <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.FunctionCallExpr" title="vc2_pseudocode_parser.parser.ast.FunctionCallExpr"><span class="pre">vc2_pseudocode_parser.parser.ast.FunctionCallExpr</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.FunctionCallStmt.call" title="Permalink to this definition">¶</a></dt>
+<dd><p>The <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.FunctionCallExpr" title="vc2_pseudocode_parser.parser.ast.FunctionCallExpr"><code class="xref py py-class docutils literal notranslate"><span class="pre">FunctionCallExpr</span></code></a> which defines the function call.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.FunctionCallStmt.eol">
+<code class="sig-name descname"><span class="pre">eol</span></code><em class="property"><span class="pre">:</span> <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EOL" title="vc2_pseudocode_parser.parser.ast.EOL"><span class="pre">vc2_pseudocode_parser.parser.ast.EOL</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.FunctionCallStmt.eol" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EOL" title="vc2_pseudocode_parser.parser.ast.EOL"><code class="xref py py-class docutils literal notranslate"><span class="pre">EOL</span></code></a> following the function call.</p>
+</dd></dl>
+
+</dd></dl>
+
+<p>Return statements are defined as follows:</p>
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.ast.ReturnStmt">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">ReturnStmt</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eol</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.ReturnStmt" title="Permalink to this definition">¶</a></dt>
+<dd><p>A return statement:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">return</span> <span class="o">&lt;</span><span class="n">value</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">eol</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.ReturnStmt.value">
+<code class="sig-name descname"><span class="pre">value</span></code><em class="property"><span class="pre">:</span> <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Expr" title="vc2_pseudocode_parser.parser.ast.Expr"><span class="pre">vc2_pseudocode_parser.parser.ast.Expr</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.ReturnStmt.value" title="Permalink to this definition">¶</a></dt>
+<dd><p>A <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Expr" title="vc2_pseudocode_parser.parser.ast.Expr"><code class="xref py py-class docutils literal notranslate"><span class="pre">Expr</span></code></a> giving the value to be returned.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.ReturnStmt.eol">
+<code class="sig-name descname"><span class="pre">eol</span></code><em class="property"><span class="pre">:</span> <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EOL" title="vc2_pseudocode_parser.parser.ast.EOL"><span class="pre">vc2_pseudocode_parser.parser.ast.EOL</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.ReturnStmt.eol" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EOL" title="vc2_pseudocode_parser.parser.ast.EOL"><code class="xref py py-class docutils literal notranslate"><span class="pre">EOL</span></code></a> following the return statement.</p>
+</dd></dl>
+
+</dd></dl>
+
+<p>Assignment statements are defined as follows:</p>
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.ast.AssignmentStmt">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">AssignmentStmt</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">variable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">op</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eol</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.AssignmentStmt" title="Permalink to this definition">¶</a></dt>
+<dd><p>A simple or compound assignment statement:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">variable</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">op</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">value</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">eol</span><span class="o">&gt;</span>  <span class="c1"># e.g. x += 1 + 2</span>
+</pre></div>
+</div>
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.AssignmentStmt.variable">
+<code class="sig-name descname"><span class="pre">variable</span></code><em class="property"><span class="pre">:</span> <span class="pre">Union</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Variable" title="vc2_pseudocode_parser.parser.ast.Variable"><span class="pre">vc2_pseudocode_parser.parser.ast.Variable</span></a><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Subscript" title="vc2_pseudocode_parser.parser.ast.Subscript"><span class="pre">vc2_pseudocode_parser.parser.ast.Subscript</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.AssignmentStmt.variable" title="Permalink to this definition">¶</a></dt>
+<dd><p>The <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Variable" title="vc2_pseudocode_parser.parser.ast.Variable"><code class="xref py py-class docutils literal notranslate"><span class="pre">Variable</span></code></a> or <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Subscript" title="vc2_pseudocode_parser.parser.ast.Subscript"><code class="xref py py-class docutils literal notranslate"><span class="pre">Subscript</span></code></a> being assigned to.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.AssignmentStmt.op">
+<code class="sig-name descname"><span class="pre">op</span></code><em class="property"><span class="pre">:</span> <a class="reference internal" href="#vc2_pseudocode_parser.parser.operators.AssignmentOp" title="vc2_pseudocode_parser.parser.operators.AssignmentOp"><span class="pre">vc2_pseudocode_parser.parser.operators.AssignmentOp</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.AssignmentStmt.op" title="Permalink to this definition">¶</a></dt>
+<dd><p>The type of assignment being performed (<code class="xref py py-class docutils literal notranslate"><span class="pre">AssignmentOp</span></code>).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.AssignmentStmt.value">
+<code class="sig-name descname"><span class="pre">value</span></code><em class="property"><span class="pre">:</span> <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Expr" title="vc2_pseudocode_parser.parser.ast.Expr"><span class="pre">vc2_pseudocode_parser.parser.ast.Expr</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.AssignmentStmt.value" title="Permalink to this definition">¶</a></dt>
+<dd><p>The <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Expr" title="vc2_pseudocode_parser.parser.ast.Expr"><code class="xref py py-class docutils literal notranslate"><span class="pre">Expr</span></code></a> giving the value being assigned.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.AssignmentStmt.eol">
+<code class="sig-name descname"><span class="pre">eol</span></code><em class="property"><span class="pre">:</span> <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EOL" title="vc2_pseudocode_parser.parser.ast.EOL"><span class="pre">vc2_pseudocode_parser.parser.ast.EOL</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.AssignmentStmt.eol" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EOL" title="vc2_pseudocode_parser.parser.ast.EOL"><code class="xref py py-class docutils literal notranslate"><span class="pre">EOL</span></code></a> following the assignment statement.</p>
+</dd></dl>
+
+</dd></dl>
+
+<p>The following assignment operators are defined:</p>
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.operators.AssignmentOp">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">AssignmentOp</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.AssignmentOp" title="Permalink to this definition">¶</a></dt>
+<dd><p>An enumeration.</p>
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.AssignmentOp.assign">
+<code class="sig-name descname"><span class="pre">assign</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'='</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.AssignmentOp.assign" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.AssignmentOp.add_assign">
+<code class="sig-name descname"><span class="pre">add_assign</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'+='</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.AssignmentOp.add_assign" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.AssignmentOp.sub_assign">
+<code class="sig-name descname"><span class="pre">sub_assign</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'-='</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.AssignmentOp.sub_assign" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.AssignmentOp.mul_assign">
+<code class="sig-name descname"><span class="pre">mul_assign</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'*='</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.AssignmentOp.mul_assign" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.AssignmentOp.idiv_assign">
+<code class="sig-name descname"><span class="pre">idiv_assign</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'//='</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.AssignmentOp.idiv_assign" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.AssignmentOp.pow_assign">
+<code class="sig-name descname"><span class="pre">pow_assign</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'**='</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.AssignmentOp.pow_assign" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.AssignmentOp.and_assign">
+<code class="sig-name descname"><span class="pre">and_assign</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'&amp;='</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.AssignmentOp.and_assign" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.AssignmentOp.xor_assign">
+<code class="sig-name descname"><span class="pre">xor_assign</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'^='</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.AssignmentOp.xor_assign" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.AssignmentOp.or_assign">
+<code class="sig-name descname"><span class="pre">or_assign</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'|='</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.AssignmentOp.or_assign" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.AssignmentOp.lsh_assign">
+<code class="sig-name descname"><span class="pre">lsh_assign</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'&lt;&lt;='</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.AssignmentOp.lsh_assign" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.AssignmentOp.rsh_assign">
+<code class="sig-name descname"><span class="pre">rsh_assign</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'&gt;&gt;='</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.AssignmentOp.rsh_assign" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="expressions">
+<h3>Expressions<a class="headerlink" href="#expressions" title="Permalink to this headline">¶</a></h3>
+<p>AST nodes representing expressions in the AST are subclasses of
+<a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Expr" title="vc2_pseudocode_parser.parser.ast.Expr"><code class="xref py py-class docutils literal notranslate"><span class="pre">Expr</span></code></a>.</p>
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.ast.Expr">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">Expr</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset_end</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.Expr" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<p>Unary expressions are defined as follows:</p>
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.ast.UnaryExpr">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">UnaryExpr</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">op</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.UnaryExpr" title="Permalink to this definition">¶</a></dt>
+<dd><p>A unary expression, e.g. <code class="docutils literal notranslate"><span class="pre">-foo</span></code>.</p>
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.UnaryExpr.op">
+<code class="sig-name descname"><span class="pre">op</span></code><em class="property"><span class="pre">:</span> <a class="reference internal" href="#vc2_pseudocode_parser.parser.operators.UnaryOp" title="vc2_pseudocode_parser.parser.operators.UnaryOp"><span class="pre">vc2_pseudocode_parser.parser.operators.UnaryOp</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.UnaryExpr.op" title="Permalink to this definition">¶</a></dt>
+<dd><p>The operator (<a class="reference internal" href="#vc2_pseudocode_parser.parser.operators.UnaryOp" title="vc2_pseudocode_parser.parser.operators.UnaryOp"><code class="xref py py-class docutils literal notranslate"><span class="pre">UnaryOp</span></code></a>)</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.UnaryExpr.value">
+<code class="sig-name descname"><span class="pre">value</span></code><em class="property"><span class="pre">:</span> <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Expr" title="vc2_pseudocode_parser.parser.ast.Expr"><span class="pre">vc2_pseudocode_parser.parser.ast.Expr</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.UnaryExpr.value" title="Permalink to this definition">¶</a></dt>
+<dd><p>The <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Expr" title="vc2_pseudocode_parser.parser.ast.Expr"><code class="xref py py-class docutils literal notranslate"><span class="pre">Expr</span></code></a> the operator applies to.</p>
+</dd></dl>
+
+</dd></dl>
+
+<p>With unary operators enumerated as:</p>
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.operators.UnaryOp">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">UnaryOp</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.UnaryOp" title="Permalink to this definition">¶</a></dt>
+<dd><p>An enumeration.</p>
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.UnaryOp.plus">
+<code class="sig-name descname"><span class="pre">plus</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'+'</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.UnaryOp.plus" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.UnaryOp.minus">
+<code class="sig-name descname"><span class="pre">minus</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'-'</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.UnaryOp.minus" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.UnaryOp.bitwise_not">
+<code class="sig-name descname"><span class="pre">bitwise_not</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'~'</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.UnaryOp.bitwise_not" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.UnaryOp.logical_not">
+<code class="sig-name descname"><span class="pre">logical_not</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'not'</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.UnaryOp.logical_not" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<p>Binary expressions are defined as follows:</p>
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.ast.BinaryExpr">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">BinaryExpr</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lhs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">op</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rhs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.BinaryExpr" title="Permalink to this definition">¶</a></dt>
+<dd><p>A binary expression, e.g. <code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">+</span> <span class="pre">1</span></code>.</p>
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.BinaryExpr.lhs">
+<code class="sig-name descname"><span class="pre">lhs</span></code><em class="property"><span class="pre">:</span> <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Expr" title="vc2_pseudocode_parser.parser.ast.Expr"><span class="pre">vc2_pseudocode_parser.parser.ast.Expr</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.BinaryExpr.lhs" title="Permalink to this definition">¶</a></dt>
+<dd><p>The <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Expr" title="vc2_pseudocode_parser.parser.ast.Expr"><code class="xref py py-class docutils literal notranslate"><span class="pre">Expr</span></code></a> on the left-hand side of the expression.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.BinaryExpr.op">
+<code class="sig-name descname"><span class="pre">op</span></code><em class="property"><span class="pre">:</span> <a class="reference internal" href="#vc2_pseudocode_parser.parser.operators.BinaryOp" title="vc2_pseudocode_parser.parser.operators.BinaryOp"><span class="pre">vc2_pseudocode_parser.parser.operators.BinaryOp</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.BinaryExpr.op" title="Permalink to this definition">¶</a></dt>
+<dd><p>The operator (<a class="reference internal" href="#vc2_pseudocode_parser.parser.operators.BinaryOp" title="vc2_pseudocode_parser.parser.operators.BinaryOp"><code class="xref py py-class docutils literal notranslate"><span class="pre">BinaryOp</span></code></a>)</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.BinaryExpr.rhs">
+<code class="sig-name descname"><span class="pre">rhs</span></code><em class="property"><span class="pre">:</span> <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Expr" title="vc2_pseudocode_parser.parser.ast.Expr"><span class="pre">vc2_pseudocode_parser.parser.ast.Expr</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.BinaryExpr.rhs" title="Permalink to this definition">¶</a></dt>
+<dd><p>The <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Expr" title="vc2_pseudocode_parser.parser.ast.Expr"><code class="xref py py-class docutils literal notranslate"><span class="pre">Expr</span></code></a> on the right-hand side of the expression.</p>
+</dd></dl>
+
+</dd></dl>
+
+<p>With binary operators enumerated as:</p>
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.operators.BinaryOp">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">BinaryOp</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.BinaryOp" title="Permalink to this definition">¶</a></dt>
+<dd><p>An enumeration.</p>
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.BinaryOp.logical_or">
+<code class="sig-name descname"><span class="pre">logical_or</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'or'</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.BinaryOp.logical_or" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.BinaryOp.logical_and">
+<code class="sig-name descname"><span class="pre">logical_and</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'and'</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.BinaryOp.logical_and" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.BinaryOp.eq">
+<code class="sig-name descname"><span class="pre">eq</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'=='</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.BinaryOp.eq" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.BinaryOp.ne">
+<code class="sig-name descname"><span class="pre">ne</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'!='</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.BinaryOp.ne" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.BinaryOp.lt">
+<code class="sig-name descname"><span class="pre">lt</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'&lt;'</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.BinaryOp.lt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.BinaryOp.le">
+<code class="sig-name descname"><span class="pre">le</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'&lt;='</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.BinaryOp.le" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.BinaryOp.gt">
+<code class="sig-name descname"><span class="pre">gt</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'&gt;'</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.BinaryOp.gt" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.BinaryOp.ge">
+<code class="sig-name descname"><span class="pre">ge</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'&gt;='</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.BinaryOp.ge" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.BinaryOp.bitwise_or_">
+<code class="sig-name descname"><span class="pre">bitwise_or_</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'|'</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.BinaryOp.bitwise_or_" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.BinaryOp.bitwise_xor">
+<code class="sig-name descname"><span class="pre">bitwise_xor</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'^'</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.BinaryOp.bitwise_xor" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.BinaryOp.bitwise_and_">
+<code class="sig-name descname"><span class="pre">bitwise_and_</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'&amp;'</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.BinaryOp.bitwise_and_" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.BinaryOp.lsh">
+<code class="sig-name descname"><span class="pre">lsh</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'&lt;&lt;'</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.BinaryOp.lsh" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.BinaryOp.rsh">
+<code class="sig-name descname"><span class="pre">rsh</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'&gt;&gt;'</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.BinaryOp.rsh" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.BinaryOp.add">
+<code class="sig-name descname"><span class="pre">add</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'+'</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.BinaryOp.add" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.BinaryOp.sub">
+<code class="sig-name descname"><span class="pre">sub</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'-'</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.BinaryOp.sub" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.BinaryOp.mul">
+<code class="sig-name descname"><span class="pre">mul</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'*'</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.BinaryOp.mul" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.BinaryOp.idiv">
+<code class="sig-name descname"><span class="pre">idiv</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'//'</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.BinaryOp.idiv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.BinaryOp.mod">
+<code class="sig-name descname"><span class="pre">mod</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'%'</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.BinaryOp.mod" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.BinaryOp.pow">
+<code class="sig-name descname"><span class="pre">pow</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'**'</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.BinaryOp.pow" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<p>Calls to functions are defined as follows:</p>
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.ast.FunctionCallExpr">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">FunctionCallExpr</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset_end</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arguments</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.FunctionCallExpr" title="Permalink to this definition">¶</a></dt>
+<dd><p>A call to a function:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;</span><span class="p">(</span><span class="o">&lt;</span><span class="n">arguments</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">arguments</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;...&gt;</span><span class="p">)</span>  <span class="c1"># e.g. foo(1, 2, 3)</span>
+</pre></div>
+</div>
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.FunctionCallExpr.name">
+<code class="sig-name descname"><span class="pre">name</span></code><em class="property"><span class="pre">:</span> <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><span class="pre">str</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.FunctionCallExpr.name" title="Permalink to this definition">¶</a></dt>
+<dd><p>The name of the function to be called.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.FunctionCallExpr.arguments">
+<code class="sig-name descname"><span class="pre">arguments</span></code><em class="property"><span class="pre">:</span> <span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Expr" title="vc2_pseudocode_parser.parser.ast.Expr"><span class="pre">vc2_pseudocode_parser.parser.ast.Expr</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.FunctionCallExpr.arguments" title="Permalink to this definition">¶</a></dt>
+<dd><p>The list of <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Expr" title="vc2_pseudocode_parser.parser.ast.Expr"><code class="xref py py-class docutils literal notranslate"><span class="pre">Expr</span></code></a> giving the arguments to the call.</p>
+</dd></dl>
+
+</dd></dl>
+
+<p>Uses of variables and subscripted variables are defined as follows:</p>
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.ast.VariableExpr">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">VariableExpr</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">variable</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.VariableExpr" title="Permalink to this definition">¶</a></dt>
+<dd><p>A use of a variable or subscripted variable.</p>
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.VariableExpr.variable">
+<code class="sig-name descname"><span class="pre">variable</span></code><em class="property"><span class="pre">:</span> <span class="pre">Union</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Variable" title="vc2_pseudocode_parser.parser.ast.Variable"><span class="pre">vc2_pseudocode_parser.parser.ast.Variable</span></a><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Subscript" title="vc2_pseudocode_parser.parser.ast.Subscript"><span class="pre">vc2_pseudocode_parser.parser.ast.Subscript</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.VariableExpr.variable" title="Permalink to this definition">¶</a></dt>
+<dd><p>The <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Variable" title="vc2_pseudocode_parser.parser.ast.Variable"><code class="xref py py-class docutils literal notranslate"><span class="pre">Variable</span></code></a> or <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Subscript" title="vc2_pseudocode_parser.parser.ast.Subscript"><code class="xref py py-class docutils literal notranslate"><span class="pre">Subscript</span></code></a> used.</p>
+</dd></dl>
+
+</dd></dl>
+
+<p>Value literals are defined as follows:</p>
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.ast.BooleanExpr">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">BooleanExpr</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.BooleanExpr" title="Permalink to this definition">¶</a></dt>
+<dd><p>A boolean literal, i.e. <code class="docutils literal notranslate"><span class="pre">True</span></code> and <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p>
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.BooleanExpr.value">
+<code class="sig-name descname"><span class="pre">value</span></code><em class="property"><span class="pre">:</span> <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.9)"><span class="pre">bool</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.BooleanExpr.value" title="Permalink to this definition">¶</a></dt>
+<dd><p>The boolean value.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.ast.NumberExpr">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">NumberExpr</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset_end</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">display_base</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">display_digits</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.NumberExpr" title="Permalink to this definition">¶</a></dt>
+<dd><p>A numerical literal integer, e.g. <code class="docutils literal notranslate"><span class="pre">123</span></code> or <code class="docutils literal notranslate"><span class="pre">0xF00</span></code>.</p>
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.NumberExpr.value">
+<code class="sig-name descname"><span class="pre">value</span></code><em class="property"><span class="pre">:</span> <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><span class="pre">int</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.NumberExpr.value" title="Permalink to this definition">¶</a></dt>
+<dd><p>The (parsed) integer value.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.NumberExpr.display_base">
+<code class="sig-name descname"><span class="pre">display_base</span></code><em class="property"><span class="pre">:</span> <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><span class="pre">int</span></a></em><em class="property"> <span class="pre">=</span> <span class="pre">10</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.NumberExpr.display_base" title="Permalink to this definition">¶</a></dt>
+<dd><p>The base which the literal was encoded in.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.NumberExpr.display_digits">
+<code class="sig-name descname"><span class="pre">display_digits</span></code><em class="property"><span class="pre">:</span> <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.9)"><span class="pre">int</span></a></em><em class="property"> <span class="pre">=</span> <span class="pre">1</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.NumberExpr.display_digits" title="Permalink to this definition">¶</a></dt>
+<dd><p>The number of digits used in the literal, including leading zeros but
+excluding any prefix (e.g. <code class="docutils literal notranslate"><span class="pre">0x</span></code> or <code class="docutils literal notranslate"><span class="pre">0b</span></code>).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.ast.EmptyMapExpr">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">EmptyMapExpr</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset_end</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.EmptyMapExpr" title="Permalink to this definition">¶</a></dt>
+<dd><p>An empty map literal (e.g. <code class="docutils literal notranslate"><span class="pre">{}</span></code>).</p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.ast.LabelExpr">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">LabelExpr</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">label</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.LabelExpr" title="Permalink to this definition">¶</a></dt>
+<dd><p>A label literal.</p>
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.LabelExpr.label">
+<code class="sig-name descname"><span class="pre">label</span></code><em class="property"><span class="pre">:</span> <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Label" title="vc2_pseudocode_parser.parser.ast.Label"><span class="pre">vc2_pseudocode_parser.parser.ast.Label</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.LabelExpr.label" title="Permalink to this definition">¶</a></dt>
+<dd><p>The <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Label" title="vc2_pseudocode_parser.parser.ast.Label"><code class="xref py py-class docutils literal notranslate"><span class="pre">Label</span></code></a> used.</p>
+</dd></dl>
+
+</dd></dl>
+
+<p>For parenthesised expressions, e.g. <code class="docutils literal notranslate"><span class="pre">(1</span> <span class="pre">+</span> <span class="pre">2)</span></code>, the presence of the
+parentheses is explicitly marked in the AST. While this is not semantically
+important (since evaluation order is explicit in an AST) it may be helpful in
+retaining parentheses added for human legibility when translating the
+pseudocode into other forms.</p>
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.ast.ParenExpr">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">ParenExpr</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset_end</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.ParenExpr" title="Permalink to this definition">¶</a></dt>
+<dd><p>A parenthesised expression.</p>
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.ParenExpr.value">
+<code class="sig-name descname"><span class="pre">value</span></code><em class="property"><span class="pre">:</span> <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Expr" title="vc2_pseudocode_parser.parser.ast.Expr"><span class="pre">vc2_pseudocode_parser.parser.ast.Expr</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.ParenExpr.value" title="Permalink to this definition">¶</a></dt>
+<dd><p>The parenthesised <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Expr" title="vc2_pseudocode_parser.parser.ast.Expr"><code class="xref py py-class docutils literal notranslate"><span class="pre">Expr</span></code></a></p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="variables-and-subscripts">
+<h3>Variables and subscripts<a class="headerlink" href="#variables-and-subscripts" title="Permalink to this headline">¶</a></h3>
+<p>A <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Variable" title="vc2_pseudocode_parser.parser.ast.Variable"><code class="xref py py-class docutils literal notranslate"><span class="pre">Variable</span></code></a> is defined as follows:</p>
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.ast.Variable">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">Variable</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.Variable" title="Permalink to this definition">¶</a></dt>
+<dd><p>A use of a variable.</p>
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.Variable.name">
+<code class="sig-name descname"><span class="pre">name</span></code><em class="property"><span class="pre">:</span> <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><span class="pre">str</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.Variable.name" title="Permalink to this definition">¶</a></dt>
+<dd><p>The name of the variable.</p>
+</dd></dl>
+
+</dd></dl>
+
+<p>Variables may be subscripted (multiple times) and this is represented by a
+nesting of <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Subscript" title="vc2_pseudocode_parser.parser.ast.Subscript"><code class="xref py py-class docutils literal notranslate"><span class="pre">Subscript</span></code></a> objects:</p>
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.ast.Subscript">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">Subscript</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset_end</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">variable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subscript</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.Subscript" title="Permalink to this definition">¶</a></dt>
+<dd><p>A subscripted variable (e.g. <code class="docutils literal notranslate"><span class="pre">x[1]</span></code>).</p>
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.Subscript.variable">
+<code class="sig-name descname"><span class="pre">variable</span></code><em class="property"><span class="pre">:</span> <span class="pre">Union</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Subscript" title="vc2_pseudocode_parser.parser.ast.Subscript"><span class="pre">vc2_pseudocode_parser.parser.ast.Subscript</span></a><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Variable" title="vc2_pseudocode_parser.parser.ast.Variable"><span class="pre">vc2_pseudocode_parser.parser.ast.Variable</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.Subscript.variable" title="Permalink to this definition">¶</a></dt>
+<dd><p>The <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Variable" title="vc2_pseudocode_parser.parser.ast.Variable"><code class="xref py py-class docutils literal notranslate"><span class="pre">Variable</span></code></a> being subscripted (or <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Subscript" title="vc2_pseudocode_parser.parser.ast.Subscript"><code class="xref py py-class docutils literal notranslate"><span class="pre">Subscript</span></code></a> in the
+case of a multiply subscripted variable.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.Subscript.subscript">
+<code class="sig-name descname"><span class="pre">subscript</span></code><em class="property"><span class="pre">:</span> <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Expr" title="vc2_pseudocode_parser.parser.ast.Expr"><span class="pre">vc2_pseudocode_parser.parser.ast.Expr</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.Subscript.subscript" title="Permalink to this definition">¶</a></dt>
+<dd><p>The <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Expr" title="vc2_pseudocode_parser.parser.ast.Expr"><code class="xref py py-class docutils literal notranslate"><span class="pre">Expr</span></code></a> giving the subscript value.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="labels">
+<h3>Labels<a class="headerlink" href="#labels" title="Permalink to this headline">¶</a></h3>
+<p>Labels are defined as follows:</p>
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.ast.Label">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">Label</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.Label" title="Permalink to this definition">¶</a></dt>
+<dd><p>A label value.</p>
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.Label.name">
+<code class="sig-name descname"><span class="pre">name</span></code><em class="property"><span class="pre">:</span> <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><span class="pre">str</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.Label.name" title="Permalink to this definition">¶</a></dt>
+<dd><p>The label name.</p>
+</dd></dl>
+
+</dd></dl>
+
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Labels and variables are syntactically ambiguous in the pseudocode language
+but are disambiguated in the AST. Names in the pseudocode are deemed to be
+variables if they correspond with function arguments, loop variables or
+assignment targets within a function’s namespace. All other names are
+deemed to be labels.</p>
+</div>
+</div>
+<div class="section" id="comments-and-vertical-whitespace">
+<h3>Comments and vertical whitespace<a class="headerlink" href="#comments-and-vertical-whitespace" title="Permalink to this headline">¶</a></h3>
+<p>All comments and vertical whitespace (i.e. blank lines) are captured by the
+AST. This enables these non-semantic components to be retained in language
+translations.</p>
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.ast.Comment">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">Comment</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">string</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.Comment" title="Permalink to this definition">¶</a></dt>
+<dd><p>An end-of-line comment.</p>
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.Comment.string">
+<code class="sig-name descname"><span class="pre">string</span></code><em class="property"><span class="pre">:</span> <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.9)"><span class="pre">str</span></a></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.Comment.string" title="Permalink to this definition">¶</a></dt>
+<dd><p>The comment string, including leading ‘#’ but not trailing newline.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.ast.EmptyLine">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">EmptyLine</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">offset</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset_end</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">comment</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.EmptyLine" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents an empty (or comment-only) line in the source.</p>
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.EmptyLine.comment">
+<code class="sig-name descname"><span class="pre">comment</span></code><em class="property"><span class="pre">:</span> <span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Comment" title="vc2_pseudocode_parser.parser.ast.Comment"><span class="pre">vc2_pseudocode_parser.parser.ast.Comment</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"> <span class="pre">=</span> <span class="pre">None</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.EmptyLine.comment" title="Permalink to this definition">¶</a></dt>
+<dd><p>The <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Comment" title="vc2_pseudocode_parser.parser.ast.Comment"><code class="xref py py-class docutils literal notranslate"><span class="pre">Comment</span></code></a> on this line, if present.</p>
+</dd></dl>
+
+</dd></dl>
+
+<p>Simple statements are syntactically terminated by an optional comment followed
+by a newline and then a number of empty or comment-only lines. These details
+are captured by the <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EOL" title="vc2_pseudocode_parser.parser.ast.EOL"><code class="xref py py-class docutils literal notranslate"><span class="pre">EOL</span></code></a> node.</p>
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.ast.EOL">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">EOL</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="pre">offset</span></em>, <em class="sig-param"><span class="pre">offset_end</span></em>, <em class="sig-param"><span class="pre">comment=None</span></em>, <em class="sig-param"><span class="pre">empty_lines=&lt;factory&gt;</span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.EOL" title="Permalink to this definition">¶</a></dt>
+<dd><p>The end-of-line terminator following a statement.</p>
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.EOL.comment">
+<code class="sig-name descname"><span class="pre">comment</span></code><em class="property"><span class="pre">:</span> <span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Comment" title="vc2_pseudocode_parser.parser.ast.Comment"><span class="pre">vc2_pseudocode_parser.parser.ast.Comment</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"> <span class="pre">=</span> <span class="pre">None</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.EOL.comment" title="Permalink to this definition">¶</a></dt>
+<dd><p>A <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Comment" title="vc2_pseudocode_parser.parser.ast.Comment"><code class="xref py py-class docutils literal notranslate"><span class="pre">Comment</span></code></a> on the same line as the statement, if present.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.ast.EOL.empty_lines">
+<code class="sig-name descname"><span class="pre">empty_lines</span></code><em class="property"><span class="pre">:</span> <span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EmptyLine" title="vc2_pseudocode_parser.parser.ast.EmptyLine"><span class="pre">vc2_pseudocode_parser.parser.ast.EmptyLine</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.ast.EOL.empty_lines" title="Permalink to this definition">¶</a></dt>
+<dd><p>Any trailing <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EmptyLine" title="vc2_pseudocode_parser.parser.ast.EmptyLine"><code class="xref py py-class docutils literal notranslate"><span class="pre">EmptyLine</span></code></a> after this statement.</p>
+</dd></dl>
+
+</dd></dl>
+
+<p>For example, given a snippet as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">foo</span><span class="p">()</span> <span class="c1"># Comment 0</span>
+
+<span class="n">bar</span><span class="p">()</span> <span class="c1"># Comment 1</span>
+<span class="c1"># Comment 2</span>
+
+<span class="c1"># Comment 3</span>
+
+<span class="n">baz</span><span class="p">()</span>  <span class="c1"># Comment 4</span>
+</pre></div>
+</div>
+<p>Here the function call <code class="docutils literal notranslate"><span class="pre">bar()</span></code> would be captured by a
+<a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.FunctionCallStmt" title="vc2_pseudocode_parser.parser.ast.FunctionCallStmt"><code class="xref py py-class docutils literal notranslate"><span class="pre">FunctionCallStmt</span></code></a>. The <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.FunctionCallStmt.eol" title="vc2_pseudocode_parser.parser.ast.FunctionCallStmt.eol"><code class="xref py py-attr docutils literal notranslate"><span class="pre">FunctionCallStmt.eol</span></code></a> would
+contain an <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EOL" title="vc2_pseudocode_parser.parser.ast.EOL"><code class="xref py py-class docutils literal notranslate"><span class="pre">EOL</span></code></a> with <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EOL.comment" title="vc2_pseudocode_parser.parser.ast.EOL.comment"><code class="xref py py-attr docutils literal notranslate"><span class="pre">EOL.comment</span></code></a> set to a
+<a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Comment" title="vc2_pseudocode_parser.parser.ast.Comment"><code class="xref py py-class docutils literal notranslate"><span class="pre">Comment</span></code></a> containing <code class="docutils literal notranslate"><span class="pre">#</span> <span class="pre">Comment</span> <span class="pre">1</span></code> and <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EOL.empty_lines" title="vc2_pseudocode_parser.parser.ast.EOL.empty_lines"><code class="xref py py-attr docutils literal notranslate"><span class="pre">EOL.empty_lines</span></code></a>
+the following four lines (and their comments).</p>
+<p>Function declarations, <code class="docutils literal notranslate"><span class="pre">if</span></code>, <code class="docutils literal notranslate"><span class="pre">else</span> <span class="pre">if</span></code>, <code class="docutils literal notranslate"><span class="pre">else</span></code>, <code class="docutils literal notranslate"><span class="pre">for</span> <span class="pre">each</span></code>, <code class="docutils literal notranslate"><span class="pre">for</span></code> and
+<code class="docutils literal notranslate"><span class="pre">while</span></code> headings are separated from their bodies by a <code class="docutils literal notranslate"><span class="pre">:</span></code> and optional
+<a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EOL" title="vc2_pseudocode_parser.parser.ast.EOL"><code class="xref py py-class docutils literal notranslate"><span class="pre">EOL</span></code></a>. When the <code class="docutils literal notranslate"><span class="pre">:</span></code> is followed by a newline, an <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EOL" title="vc2_pseudocode_parser.parser.ast.EOL"><code class="xref py py-class docutils literal notranslate"><span class="pre">EOL</span></code></a>
+object will be given, but for in-line definitions, the <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EOL" title="vc2_pseudocode_parser.parser.ast.EOL"><code class="xref py py-class docutils literal notranslate"><span class="pre">EOL</span></code></a> will be
+omitted. For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">func1</span><span class="p">():</span>
+    <span class="n">foo</span><span class="p">()</span>
+
+<span class="n">func2</span><span class="p">():</span> <span class="n">foo</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Here the <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Function" title="vc2_pseudocode_parser.parser.ast.Function"><code class="xref py py-class docutils literal notranslate"><span class="pre">Function</span></code></a> for <code class="docutils literal notranslate"><span class="pre">func1</span></code> will have <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.Function.eol" title="vc2_pseudocode_parser.parser.ast.Function.eol"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Function.eol</span></code></a>
+set to an <a class="reference internal" href="#vc2_pseudocode_parser.parser.ast.EOL" title="vc2_pseudocode_parser.parser.ast.EOL"><code class="xref py py-class docutils literal notranslate"><span class="pre">EOL</span></code></a> node for <code class="docutils literal notranslate"><span class="pre">func2</span></code> it will be <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+</div>
+</div>
+<div class="section" id="grammar">
+<h2>Grammar<a class="headerlink" href="#grammar" title="Permalink to this headline">¶</a></h2>
+<p>The pseudocode language grammar can be described by its
+<a class="reference external" href="https://peggie.readthedocs.io/en/latest/index.html#module-peggie" title="(in Peggie v0.2.1)"><code class="xref py py-mod docutils literal notranslate"><span class="pre">peggie</span></code></a> grammar:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span># Grammar for the VC-2 specification pseudocode language
+start &lt;- any_ws @=function+ eof
+
+# Function definition
+function           &lt;- identifier ws function_arguments ws stmt_block
+function_arguments &lt;- &quot;(&quot; ws (identifier ws (&quot;,&quot; ws identifier ws)* &quot;,&quot;?)?  ws &quot;)&quot;
+
+# A series of statements
+stmt_block &lt;- &quot;:&quot; ws single_line_stmt
+            / &quot;:&quot; eol @&gt;((@=stmt)+)
+
+# Statements (all end with an eol)
+stmt &lt;- if_else_stmt
+      / for_each_stmt
+      / for_stmt
+      / while_stmt
+      / function_call_stmt
+      / return_stmt
+      / assignment_stmt
+
+single_line_stmt &lt;- function_call_stmt
+                  / return_stmt
+                  / assignment_stmt
+
+function_call_stmt &lt;- function_call eol
+if_else_stmt       &lt;- @=(&quot;if&quot; ws condition ws stmt_block)
+                      @=(@=(&quot;else&quot; ws_ &quot;if&quot; ws condition ws stmt_block)*)
+                      @=((&quot;else&quot; ws stmt_block)?)
+for_each_stmt      &lt;- &quot;for&quot; ws_ &quot;each&quot; ws_ identifier ws_ &quot;in&quot; ws_ for_each_list ws stmt_block
+for_stmt           &lt;- &quot;for&quot; ws_ identifier ws &quot;=&quot; ws expr ws_ &quot;to&quot; ws_ expr ws stmt_block
+while_stmt         &lt;- &quot;while&quot; ws condition ws stmt_block
+assignment_stmt    &lt;- variable ws assignment_op ws expr eol
+return_stmt        &lt;- &quot;return&quot; ws_ expr eol
+
+condition      &lt;- &quot;(&quot; ws expr ws &quot;)&quot;
+for_each_list  &lt;- expr (ws &quot;,&quot; ws expr)*
+assignment_op  &lt;- r&quot;(\+|-|\*|//|\*\*|&amp;|\^|\||&lt;&lt;|&gt;&gt;)?=&quot;
+
+# Expressions (defined below in ascending order of precidence)
+expr &lt;- maybe_log_or_expr
+maybe_log_or_expr  &lt;- maybe_log_and_expr (ws_ &quot;or&quot;              ws_ maybe_log_and_expr)*
+maybe_log_and_expr &lt;- maybe_log_not_expr (ws_ &quot;and&quot;             ws_ maybe_log_not_expr)*
+maybe_log_not_expr &lt;- &quot;not&quot; ws_ maybe_log_not_expr / maybe_cmp_expr
+maybe_cmp_expr     &lt;- maybe_or_expr      (ws r&quot;==|!=|&lt;=|&gt;=|&lt;|&gt;&quot; ws maybe_or_expr)*
+maybe_or_expr      &lt;- maybe_xor_expr     (ws &quot;|&quot;                ws maybe_xor_expr)*
+maybe_xor_expr     &lt;- maybe_and_expr     (ws &quot;^&quot;                ws maybe_and_expr)*
+maybe_and_expr     &lt;- maybe_shift_expr   (ws &quot;&amp;&quot;                ws maybe_shift_expr)*
+maybe_shift_expr   &lt;- maybe_arith_expr   (ws r&quot;&lt;&lt;|&gt;&gt;&quot;           ws maybe_arith_expr)*
+maybe_arith_expr   &lt;- maybe_prod_expr    (ws r&quot;\+|-&quot;            ws maybe_prod_expr)*
+maybe_prod_expr    &lt;- maybe_unary_expr   (ws r&quot;\*|//|%&quot;         ws maybe_unary_expr)*
+maybe_unary_expr   &lt;- r&quot;\+|-|~&quot; ws maybe_unary_expr / maybe_pow_expr
+maybe_pow_expr     &lt;- maybe_paren_expr   (ws &quot;**&quot;               ws maybe_unary_expr)*
+maybe_paren_expr   &lt;- &quot;(&quot; ws expr ws &quot;)&quot; / atom
+
+# Atoms
+atom &lt;- function_call
+      / variable
+      / empty_map
+      / boolean
+      / number
+
+variable  &lt;- identifier (ws subscript)*
+subscript &lt;- &quot;[&quot; ws expr ws &quot;]&quot;
+
+function_call           &lt;- identifier ws function_call_arguments
+function_call_arguments &lt;- &quot;(&quot; ws (expr ws (&quot;,&quot; ws expr ws)* &quot;,&quot;?)? ws &quot;)&quot;
+
+# Literals
+identifier    &lt;- !reserved_word r&quot;[a-zA-Z_][a-zA-Z0-9_]*&quot;
+reserved_word &lt;- r&quot;(if|else|elif|elseif|for|each|foreach|in|to|while|return|[Tt]rue|[Ff]alse|and|or|not)(?![a-zA-Z0-9_])&quot;
+boolean       &lt;- (&quot;True&quot; / &quot;False&quot;)
+number        &lt;- r&quot;(0[bB][01]+)|(0[xX][0-9a-fA-F]+)|([0-9]+)&quot;
+empty_map     &lt;- &quot;{&quot; ws &quot;}&quot;
+
+# Whitespace and comments
+comment  &lt;- r&quot;#((?![\n\r]).)*(\n|\r\n|\r|(?!.))&quot;
+ws       &lt;- h_space?
+ws_      &lt;- h_space
+any_ws   &lt;- (comment / h_space / v_space)*
+eol      &lt;- h_space? (comment / v_space / eof) any_ws
+h_space  &lt;- r&quot;[ \t]+&quot;
+v_space  &lt;- &quot;\n&quot; / &quot;\r\n&quot; / &quot;\r&quot;
+eof      &lt;- !.
+</pre></div>
+</div>
+</div>
+<div class="section" id="operator-precedence-and-associativity-tables">
+<h2>Operator precedence and associativity tables<a class="headerlink" href="#operator-precedence-and-associativity-tables" title="Permalink to this headline">¶</a></h2>
+<p>A table of operator precedence and associativities is also provided which may
+be useful for, for example, producing pretty-printed outputs (with excess
+parentheses removed).</p>
+<dl class="py data">
+<dt id="vc2_pseudocode_parser.parser.operators.OPERATOR_PRECEDENCE_TABLE">
+<code class="sig-name descname"><span class="pre">OPERATOR_PRECEDENCE_TABLE</span></code><em class="property"> <span class="pre">=</span> <span class="pre">{operator:</span> <span class="pre">int,</span> <span class="pre">...}</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.OPERATOR_PRECEDENCE_TABLE" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#vc2_pseudocode_parser.parser.operators.BinaryOp" title="vc2_pseudocode_parser.parser.operators.BinaryOp"><code class="xref py py-class docutils literal notranslate"><span class="pre">BinaryOp</span></code></a> and <a class="reference internal" href="#vc2_pseudocode_parser.parser.operators.UnaryOp" title="vc2_pseudocode_parser.parser.operators.UnaryOp"><code class="xref py py-class docutils literal notranslate"><span class="pre">UnaryOp</span></code></a> operator precedence scores.
+Higher scores mean higher precedence.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt id="vc2_pseudocode_parser.parser.operators.OPERATOR_ASSOCIATIVITY_TABLE">
+<code class="sig-name descname"><span class="pre">OPERATOR_ASSOCIATIVITY_TABLE</span></code><em class="property"> <span class="pre">=</span> <span class="pre">{operator:</span> <span class="pre">associativity,</span> <span class="pre">...}</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.OPERATOR_ASSOCIATIVITY_TABLE" title="Permalink to this definition">¶</a></dt>
+<dd><p><a class="reference internal" href="#vc2_pseudocode_parser.parser.operators.BinaryOp" title="vc2_pseudocode_parser.parser.operators.BinaryOp"><code class="xref py py-class docutils literal notranslate"><span class="pre">BinaryOp</span></code></a> and <a class="reference internal" href="#vc2_pseudocode_parser.parser.operators.UnaryOp" title="vc2_pseudocode_parser.parser.operators.UnaryOp"><code class="xref py py-class docutils literal notranslate"><span class="pre">UnaryOp</span></code></a> operator associativities.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="vc2_pseudocode_parser.parser.operators.Associativity">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">Associativity</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.Associativity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Operator associativity types.</p>
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.Associativity.left">
+<code class="sig-name descname"><span class="pre">left</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'left'</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.Associativity.left" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="vc2_pseudocode_parser.parser.operators.Associativity.right">
+<code class="sig-name descname"><span class="pre">right</span></code><em class="property"> <span class="pre">=</span> <span class="pre">'right'</span></em><a class="headerlink" href="#vc2_pseudocode_parser.parser.operators.Associativity.right" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Pseudocode Parser</a><ul>
+<li><a class="reference internal" href="#id2">Parser</a></li>
+<li><a class="reference internal" href="#abstract-syntax-tree-ast">Abstract Syntax Tree (AST)</a><ul>
+<li><a class="reference internal" href="#ast-root-listing">AST Root (<code class="xref py py-class docutils literal notranslate"><span class="pre">Listing</span></code>)</a></li>
+<li><a class="reference internal" href="#statements">Statements</a></li>
+<li><a class="reference internal" href="#expressions">Expressions</a></li>
+<li><a class="reference internal" href="#variables-and-subscripts">Variables and subscripts</a></li>
+<li><a class="reference internal" href="#labels">Labels</a></li>
+<li><a class="reference internal" href="#comments-and-vertical-whitespace">Comments and vertical whitespace</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#grammar">Grammar</a></li>
+<li><a class="reference internal" href="#operator-precedence-and-associativity-tables">Operator precedence and associativity tables</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="bibliography.html"
+                        title="previous chapter">&lt;no title&gt;</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="python_transformer.html"
+                        title="next chapter">Pseudocode to Python translation</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/parser.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="python_transformer.html" title="Pseudocode to Python translation"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="bibliography.html" title="&lt;no title&gt;"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">SMPTE VC-2 Pseudocode Parsing Software 0.2.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Pseudocode Parser</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2021, BBC.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.5.1.
+    </div>
+  </body>
+</html>

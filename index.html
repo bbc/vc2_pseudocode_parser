@@ -1,0 +1,148 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VC-2 Pseudocode Parsing Software &#8212; SMPTE VC-2 Pseudocode Parsing Software 0.2.1 documentation</title>
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/nature.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="&lt;no title&gt;" href="bibliography.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="bibliography.html" title="&lt;no title&gt;"
+             accesskey="N">next</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">SMPTE VC-2 Pseudocode Parsing Software 0.2.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">VC-2 Pseudocode Parsing Software</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="vc-2-pseudocode-parsing-software">
+<h1>VC-2 Pseudocode Parsing Software<a class="headerlink" href="#vc-2-pseudocode-parsing-software" title="Permalink to this headline">¶</a></h1>
+<p>This manual describes the VC-2 pseudocode parsing software. This software
+provides facilities for parsing, translating and formatting the pseudocode
+language described in SMPTE ST 2042-1 (VC-2) series of standards documents.</p>
+<p>In <a class="reference internal" href="parser.html#parser"><span class="std std-ref">Pseudocode Parser</span></a> the <a class="reference internal" href="parser.html#module-vc2_pseudocode_parser.parser" title="vc2_pseudocode_parser.parser"><code class="xref py py-mod docutils literal notranslate"><span class="pre">vc2_pseudocode_parser.parser</span></code></a> module is
+introduced which implements a parser and Abstract Syntax Tree (AST) for the
+pseudocode language. This forms the basis of the other tools provided by this
+software and also may be used directly if desired.</p>
+<p>In <a class="reference internal" href="python_transformer.html#pseudocode-to-python"><span class="std std-ref">Pseudocode to Python translation</span></a>, the <code class="docutils literal notranslate"><span class="pre">vc2-pseudocode-to-python</span></code> command (and
+associated <a class="reference internal" href="python_transformer.html#module-vc2_pseudocode_parser.python_transformer" title="vc2_pseudocode_parser.python_transformer"><code class="xref py py-mod docutils literal notranslate"><span class="pre">vc2_pseudocode_parser.python_transformer</span></code></a> Python module)
+are introduced. These produce automatic translations of VC-2 pseudocode
+listings into valid Python.</p>
+<p>In <a class="reference internal" href="docx_transformer.html#pseudocode-to-docx"><span class="std std-ref">Pseudocode to SMPTE Word Document translation</span></a>, the <code class="docutils literal notranslate"><span class="pre">vc2-pseudocode-to-docx</span></code> command (and
+associated <a class="reference internal" href="docx_transformer.html#module-vc2_pseudocode_parser.docx_transformer" title="vc2_pseudocode_parser.docx_transformer"><code class="xref py py-mod docutils literal notranslate"><span class="pre">vc2_pseudocode_parser.docx_transformer</span></code></a> Python module)
+are introduced. These generate Word (docx) documents containing
+pretty-printed and syntax highlighted versions of a VC-2 pseudocode
+listing. Suplimentrary to this, <a class="reference internal" href="docx_generator.html#docx-generator"><span class="std std-ref">Word Document Construction</span></a> gives additional details
+of the Word document generation process.</p>
+<p>Finally, you can find the source code for <code class="xref py py-mod docutils literal notranslate"><span class="pre">vc2_pseudocode_parser</span></code> <a class="reference external" href="https://github.com/bbc/vc2_pseudocode_parser/">on
+GitHub</a>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This documentation is also <a class="reference external" href="https://bbc.github.io/vc2_pseudocode_parser/vc2_pseudocode_parser_manual.pdf">available in PDF format</a>.</p>
+</div>
+<div class="toctree-wrapper compound">
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="parser.html">Pseudocode Parser</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="parser.html#id2">Parser</a></li>
+<li class="toctree-l2"><a class="reference internal" href="parser.html#abstract-syntax-tree-ast">Abstract Syntax Tree (AST)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="parser.html#grammar">Grammar</a></li>
+<li class="toctree-l2"><a class="reference internal" href="parser.html#operator-precedence-and-associativity-tables">Operator precedence and associativity tables</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="python_transformer.html">Pseudocode to Python translation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="python_transformer.html#command-line-utility">Command-line utility</a></li>
+<li class="toctree-l2"><a class="reference internal" href="python_transformer.html#python-api">Python API</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="docx_transformer.html">Pseudocode to SMPTE Word Document translation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="docx_transformer.html#dependencies">Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="docx_transformer.html#command-line-utility">Command-line utility</a></li>
+<li class="toctree-l2"><a class="reference internal" href="docx_transformer.html#python-api">Python API</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="docx_generator.html">Word Document Construction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="docx_generator.html#document-model">Document model</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h4>Next topic</h4>
+  <p class="topless"><a href="bibliography.html"
+                        title="next chapter">&lt;no title&gt;</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/index.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="bibliography.html" title="&lt;no title&gt;"
+             >next</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">SMPTE VC-2 Pseudocode Parsing Software 0.2.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">VC-2 Pseudocode Parsing Software</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2021, BBC.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.5.1.
+    </div>
+  </body>
+</html>

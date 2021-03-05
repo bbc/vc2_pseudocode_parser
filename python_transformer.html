@@ -1,0 +1,204 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pseudocode to Python translation &#8212; SMPTE VC-2 Pseudocode Parsing Software 0.2.1 documentation</title>
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/nature.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Pseudocode to SMPTE Word Document translation" href="docx_transformer.html" />
+    <link rel="prev" title="Pseudocode Parser" href="parser.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="docx_transformer.html" title="Pseudocode to SMPTE Word Document translation"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="parser.html" title="Pseudocode Parser"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">SMPTE VC-2 Pseudocode Parsing Software 0.2.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Pseudocode to Python translation</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-vc2_pseudocode_parser.python_transformer">
+<span id="pseudocode-to-python-translation"></span><span id="pseudocode-to-python"></span><h1>Pseudocode to Python translation<a class="headerlink" href="#module-vc2_pseudocode_parser.python_transformer" title="Permalink to this headline">¶</a></h1>
+<p>The <a class="reference internal" href="#module-vc2_pseudocode_parser.python_transformer" title="vc2_pseudocode_parser.python_transformer"><code class="xref py py-mod docutils literal notranslate"><span class="pre">vc2_pseudocode_parser.python_transformer</span></code></a> module and
+<code class="docutils literal notranslate"><span class="pre">vc2-pseudocode-to-python</span></code> command line tool automatically translate
+pseudocode listings into valid Python.</p>
+<p>In general, the translation between pseudocode and Python is ‘obvious’. The
+only non-obvious part, perhaps, is that labels are translated into Python
+string literals. The output is pretty-printed in a style similar to
+the <a class="reference external" href="https://github.com/psf/black">Black</a> code style with comments and
+vertical whitespace retained (in a semi-normalised fashion).</p>
+<p>For example, the following pseudocode:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">add</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">):</span>
+    <span class="c1"># A function which adds three numbers together</span>
+    <span class="n">total</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># An accumulator</span>
+    <span class="k">for</span> <span class="n">each</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">:</span>
+        <span class="n">total</span> <span class="o">+=</span> <span class="n">n</span>
+    <span class="k">return</span> <span class="n">total</span>
+
+<span class="n">update_state</span><span class="p">(</span><span class="n">state</span><span class="p">):</span>
+    <span class="n">state</span><span class="p">[</span><span class="n">count</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+</pre></div>
+</div>
+<p>Is translated in the the following Python:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A function which adds three numbers together</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">total</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># An accumulator</span>
+    <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">]:</span>
+        <span class="n">total</span> <span class="o">+=</span> <span class="n">n</span>
+    <span class="k">return</span> <span class="n">total</span>
+
+
+<span class="k">def</span> <span class="nf">update_state</span><span class="p">(</span><span class="n">state</span><span class="p">):</span>
+    <span class="n">state</span><span class="p">[</span><span class="s2">&quot;count&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+</pre></div>
+</div>
+<div class="section" id="command-line-utility">
+<h2>Command-line utility<a class="headerlink" href="#command-line-utility" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">vc2-pseudocode-to-python</span></code> command line utility is provided which can
+convert a pseudocode listing into Python.</p>
+<p>Example usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ vc2-pseudocode-to-python input.pc output.py
+</pre></div>
+</div>
+</div>
+<div class="section" id="python-api">
+<h2>Python API<a class="headerlink" href="#python-api" title="Permalink to this headline">¶</a></h2>
+<p>The <a class="reference internal" href="#vc2_pseudocode_parser.python_transformer.pseudocode_to_python" title="vc2_pseudocode_parser.python_transformer.pseudocode_to_python"><code class="xref py py-func docutils literal notranslate"><span class="pre">pseudocode_to_python()</span></code></a> utility function may be used to directly
+translate pseudocode into Python.</p>
+<dl class="py function">
+<dt id="vc2_pseudocode_parser.python_transformer.pseudocode_to_python">
+<code class="sig-name descname"><span class="pre">pseudocode_to_python</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pseudocode_source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'</span>&#160;&#160;&#160; <span class="pre">'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">generate_docstrings</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_translation_note</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.python_transformer.pseudocode_to_python" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transform a pseudocode listing into Python.</p>
+<p>Will throw a <a class="reference internal" href="parser.html#vc2_pseudocode_parser.parser.ParseError" title="vc2_pseudocode_parser.parser.ParseError"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ParseError</span></code></a>
+or <a class="reference internal" href="parser.html#vc2_pseudocode_parser.parser.ASTConstructionError" title="vc2_pseudocode_parser.parser.ASTConstructionError"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ASTConstructionError</span></code></a> if the supplied pseudocode contains
+syntactic errors.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>pseudocode_source</strong><span class="classifier">str</span></dt><dd><p>The pseudocode source code to translate.</p>
+</dd>
+<dt><strong>indent</strong><span class="classifier">str</span></dt><dd><p>The string to use for indentation in the generated Python source.
+Defaults to four spaces.</p>
+</dd>
+<dt><strong>generate_docstrings</strong><span class="classifier">bool</span></dt><dd><p>If True, the first block of comments in the file and each function will
+be converted into a docstring. Otherwise they’ll be left as ordinary
+comments. Defaulse to True.</p>
+</dd>
+<dt><strong>add_translation_note</strong><span class="classifier">bool</span></dt><dd><p>If True, adds a comment to the top of the generated output indicating
+that this file was automatically translated from the pseudocode.
+Defaulse to False.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<p>Example usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">vc2_pseudocode_parser.python_transformer</span> <span class="kn">import</span> <span class="n">pseudocode_to_python</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">pseudocode_to_python</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="gp">... </span><span class="s2">    foo(state, a):</span>
+<span class="gp">... </span><span class="s2">        state[bar] = a + 1</span>
+<span class="gp">... </span><span class="s2">&quot;&quot;&quot;</span><span class="p">))</span>
+<span class="go">def foo(state, a):</span>
+<span class="go">    state[&quot;bar&quot;] = a + 1</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Pseudocode to Python translation</a><ul>
+<li><a class="reference internal" href="#command-line-utility">Command-line utility</a></li>
+<li><a class="reference internal" href="#python-api">Python API</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="parser.html"
+                        title="previous chapter">Pseudocode Parser</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="docx_transformer.html"
+                        title="next chapter">Pseudocode to SMPTE Word Document translation</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/python_transformer.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="docx_transformer.html" title="Pseudocode to SMPTE Word Document translation"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="parser.html" title="Pseudocode Parser"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">SMPTE VC-2 Pseudocode Parsing Software 0.2.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Pseudocode to Python translation</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2021, BBC.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.5.1.
+    </div>
+  </body>
+</html>

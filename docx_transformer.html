@@ -1,0 +1,187 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pseudocode to SMPTE Word Document translation &#8212; SMPTE VC-2 Pseudocode Parsing Software 0.2.1 documentation</title>
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/nature.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Word Document Construction" href="docx_generator.html" />
+    <link rel="prev" title="Pseudocode to Python translation" href="python_transformer.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="docx_generator.html" title="Word Document Construction"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="python_transformer.html" title="Pseudocode to Python translation"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">SMPTE VC-2 Pseudocode Parsing Software 0.2.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Pseudocode to SMPTE Word Document translation</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-vc2_pseudocode_parser.docx_transformer">
+<span id="pseudocode-to-smpte-word-document-translation"></span><span id="pseudocode-to-docx"></span><h1>Pseudocode to SMPTE Word Document translation<a class="headerlink" href="#module-vc2_pseudocode_parser.docx_transformer" title="Permalink to this headline">¶</a></h1>
+<p>The <a class="reference internal" href="#module-vc2_pseudocode_parser.docx_transformer" title="vc2_pseudocode_parser.docx_transformer"><code class="xref py py-mod docutils literal notranslate"><span class="pre">vc2_pseudocode_parser.docx_transformer</span></code></a> module and
+<code class="docutils literal notranslate"><span class="pre">vc2-pseudocode-to-docx</span></code> command line tool automatically translate pseudocode
+listings into syntax-highlighted SMPTE-style listings tables in a Word
+document.</p>
+<p>As an example the following input:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">padding_data</span><span class="p">(</span><span class="n">state</span><span class="p">):</span>                            <span class="c1"># Ref</span>
+    <span class="c1"># Read a padding data block</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span> <span class="n">to</span> <span class="n">state</span><span class="p">[</span><span class="n">next_parse_offset</span><span class="p">]</span><span class="o">-</span><span class="mi">13</span><span class="p">:</span>   <span class="c1"># 10.5</span>
+        <span class="c1"># NB: data is just discarded</span>
+        <span class="n">read_byte</span><span class="p">()</span>                             <span class="c1"># A.2.2</span>
+</pre></div>
+</div>
+<p>Is transformed into the following output:</p>
+<img alt="_images/example_docx_table.png" src="_images/example_docx_table.png" />
+<p>Note that:</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt>Syntax highlighting has been applied</dt><dd><ul>
+<li><p>Keywords are in bold (e.g. <code class="docutils literal notranslate"><span class="pre">for</span></code> and <code class="docutils literal notranslate"><span class="pre">to</span></code>)</p></li>
+<li><p>Labels are italicised (e.g. <code class="docutils literal notranslate"><span class="pre">next_parse_offset</span></code>)</p></li>
+<li><p>Variables and other values are in normal print</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>Spacing is normalised (e.g. around the <code class="docutils literal notranslate"><span class="pre">-</span></code> operator)</p></li>
+<li><p>End-of-line comments are shown in a right-hand column</p></li>
+<li><p>Comments appearing on their own are omitted</p></li>
+</ul>
+<div class="section" id="dependencies">
+<h2>Dependencies<a class="headerlink" href="#dependencies" title="Permalink to this headline">¶</a></h2>
+<p>To generate word documents the <a class="reference external" href="https://python-docx.readthedocs.io/en/latest/">python-docx</a> library is used. This is an
+optional dependency of the <code class="xref py py-mod docutils literal notranslate"><span class="pre">vc2_pseudocode_parser</span></code> software and must be
+installed separately, e.g. using:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pip install python-docx
+</pre></div>
+</div>
+</div>
+<div class="section" id="command-line-utility">
+<h2>Command-line utility<a class="headerlink" href="#command-line-utility" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">vc2-pseudocode-to-docx</span></code> command line utility is provided which can
+convert a pseudocode listing into a Word document.</p>
+<p>Example usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ vc2-pseudocode-to-docx input.pc output.docx
+</pre></div>
+</div>
+</div>
+<div class="section" id="python-api">
+<h2>Python API<a class="headerlink" href="#python-api" title="Permalink to this headline">¶</a></h2>
+<p>The <a class="reference internal" href="#vc2_pseudocode_parser.docx_transformer.pseudocode_to_docx" title="vc2_pseudocode_parser.docx_transformer.pseudocode_to_docx"><code class="xref py py-func docutils literal notranslate"><span class="pre">pseudocode_to_docx()</span></code></a> utility function may be used to directly
+translate pseudocode into a Word document.</p>
+<dl class="py function">
+<dt id="vc2_pseudocode_parser.docx_transformer.pseudocode_to_docx">
+<code class="sig-name descname"><span class="pre">pseudocode_to_docx</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pseudocode_source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#vc2_pseudocode_parser.docx_transformer.pseudocode_to_docx" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transform a pseudocode listing into a Word (docx) document.</p>
+<p>Will throw a <a class="reference internal" href="parser.html#vc2_pseudocode_parser.parser.ParseError" title="vc2_pseudocode_parser.parser.ParseError"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ParseError</span></code></a>
+<a class="reference internal" href="parser.html#vc2_pseudocode_parser.parser.ASTConstructionError" title="vc2_pseudocode_parser.parser.ASTConstructionError"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ASTConstructionError</span></code></a> if the supplied pseudocode contains errors.</p>
+</dd></dl>
+
+<p>Example usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">vc2_pseudocode_parser.docx_transformer</span> <span class="kn">import</span> <span class="n">pseudocode_to_docx</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pseudocode_source</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="gp">... </span><span class="s1">    foo(state, a):</span>
+<span class="gp">... </span><span class="s1">        state[bar] = a + 1</span>
+<span class="gp">... </span><span class="s1">&#39;&#39;&#39;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pseudocode_to_docx</span><span class="p">(</span><span class="n">pseudocode_source</span><span class="p">,</span> <span class="s2">&quot;/path/to/output.docx&quot;</span><span class="p">)</span>  
+</pre></div>
+</div>
+</div>
+</div>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Pseudocode to SMPTE Word Document translation</a><ul>
+<li><a class="reference internal" href="#dependencies">Dependencies</a></li>
+<li><a class="reference internal" href="#command-line-utility">Command-line utility</a></li>
+<li><a class="reference internal" href="#python-api">Python API</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="python_transformer.html"
+                        title="previous chapter">Pseudocode to Python translation</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="docx_generator.html"
+                        title="next chapter">Word Document Construction</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/docx_transformer.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="docx_generator.html" title="Word Document Construction"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="python_transformer.html" title="Pseudocode to Python translation"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">SMPTE VC-2 Pseudocode Parsing Software 0.2.1 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Pseudocode to SMPTE Word Document translation</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2021, BBC.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 3.5.1.
+    </div>
+  </body>
+</html>
