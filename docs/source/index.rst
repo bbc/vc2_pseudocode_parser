@@ -22,6 +22,23 @@ pretty-printed and syntax highlighted versions of a VC-2 pseudocode
 listing. Suplimentrary to this, :ref:`docx-generator` gives additional details
 of the Word document generation process.
 
+Finally, you can find the source code for :py:mod:`vc2_pseudocode_parser` `on
+GitHub <https://github.com/bbc/vc2_pseudocode_parser/>`_.
+
+.. only:: not latex
+
+    .. note::
+    
+        This documentation is also `available in PDF format
+        <https://bbc.github.io/vc2_pseudocode_parser/vc2_pseudocode_parser_manual.pdf>`_.
+
+.. only:: not html
+
+    .. note::
+    
+        This documentation is also `available to browse online in HTML format
+        <https://bbc.github.io/vc2_pseudocode_parser/>`_.
+
 .. toctree::
    :hidden:
 
