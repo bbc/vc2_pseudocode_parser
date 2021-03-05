@@ -1,7 +1,7 @@
 SMPTE ST 2042-1 VC-2 Pseudocode Language Parsing Software
 =========================================================
 
-This repository contains the software tools for parsing the pseudocode language
+This repository contains software tools for parsing the pseudocode language
 used in the [SMPTE ST 2042-1 (VC-2) professional video
 codec](https://www.bbc.co.uk/rd/projects/vc-2) specification documents.
 
@@ -13,14 +13,15 @@ for inclusions in specifications.
 Installation
 ------------
 
-This software is not currently published on PyPI so it must be installed
-directly from a checkout of this repository, e.g. using:
+To install from [PyPI](https://pypi.org/) use:
+
+    $ pip install vc2_pseudocode_parser
+
+Alternatively, to install directly from a checkout of this repository:
 
     $ python setup.py install --user
 
-This software requires Python 3.7 or later. It may run under Python 3.6 if the
-backported `dataclasses` package is installed from PyPI (e.g. `pip install
-dataclasses`).
+This software requires Python 3.6 or later.
 
 To enable support for generating Word documents, `python-docx` must also be
 installed (e.g. using `pip install python-docx`).
@@ -107,7 +108,7 @@ alike. Contact [Jonathan Heathcote](mailto:jonathan.heathcote@bbc.co.uk) or
 
 
 License
-=======
+-------
 
 This software is distributed under the [GNU General Public License version
 3](./LICENSE.txt), &copy; BBC 2021.
