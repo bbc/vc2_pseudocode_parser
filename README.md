@@ -72,7 +72,7 @@ Or into a Word document with tabular listings as follows:
 ![Table showing source listing](docs/source/_static/example_docx_table_2.png)
 
 For a more thorough introduction, see the [`vc2_pseudocode_parser`
-manual](https://bbc.github.io/vc2_pseudocode_parser/) (also available as a [PDF
+manual](https://bbc.github.io/vc2_pseudocode_parser/) (also available in [PDF
 format](https://bbc.github.io/vc2_pseudocode_parser/vc2_pseudocode_parser_manual.pdf)).
 
 
